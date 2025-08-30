@@ -84,7 +84,7 @@ class _BillsSoaScreenState extends State<BillsSoaScreen> {
         children: [
           if (_outstanding != null)
             Card(
-              color: Colors.red.withOpacity(0.08),
+              color: Colors.red.withValues(alpha: 0.08),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
                 leading: const Icon(Icons.warning_amber, color: Colors.red),
@@ -115,7 +115,7 @@ class _BillsSoaScreenState extends State<BillsSoaScreen> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

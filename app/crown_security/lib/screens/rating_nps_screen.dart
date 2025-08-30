@@ -54,6 +54,7 @@ class _RatingNpsScreenState extends State<RatingNpsScreen> {
 
   Future<void> _submitRating() async {
     if (_currentNps == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an NPS score.')),
       );
@@ -73,10 +74,12 @@ class _RatingNpsScreenState extends State<RatingNpsScreen> {
         'rating_value': _currentRating,
         'nps_score': _currentNps,
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Thank you for your feedback!')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to submit feedback.')),
       );

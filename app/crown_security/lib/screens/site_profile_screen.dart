@@ -161,7 +161,7 @@ class _SiteProfileScreenState extends State<SiteProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Theme.of(context).primaryColor.withOpacity(0.8)),
+          Icon(icon, color: Theme.of(context).primaryColor.withValues(alpha: 0.8)),
           const SizedBox(width: 16),
           Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
           Expanded(

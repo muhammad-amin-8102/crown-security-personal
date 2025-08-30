@@ -59,9 +59,11 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           'site_id': siteId,
         });
         _complaintController.clear();
+        if (!mounted) return;
         Navigator.of(context).pop(); // Close the dialog
         _loadComplaints(); // Refresh the list
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to submit complaint.')),
         );

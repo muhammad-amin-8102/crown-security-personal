@@ -57,6 +57,13 @@ You should see logs like `DB connected` and `API listening on :8080` when the se
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ```
 
+## Admin test user
+- A default ADMIN user is seeded for testing the Admin UI.
+- Default credentials:
+	- Email: `admin@crown.local`
+	- Password: `Pass@123`
+- You can override via env vars before seeding: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `ADMIN_PHONE`.
+
 ## Notes
 - The Flutter app entrypoint is `app/crown_security/lib/main.dart`.
 - Environment variables are loaded from `.env` (see `backend/.env`).

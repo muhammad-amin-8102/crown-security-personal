@@ -96,6 +96,7 @@ class _BulkUploadButtonState extends State<BulkUploadButton> {
       // Decide mode if singleUrl provided
       bool perRow = false;
       if (widget.singleUrl != null) {
+        if (!mounted) return;
         perRow = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
@@ -110,11 +111,10 @@ class _BulkUploadButtonState extends State<BulkUploadButton> {
       }
 
       if (!perRow) {
-        await Api.dio.post(widget.bulkUrl, data: items);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bulk upload completed')));
-        }
-        widget.onDone?.call();
+  await Api.dio.post(widget.bulkUrl, data: items);
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bulk upload completed')));
+  widget.onDone?.call();
       } else {
         final singleUrl = widget.singleUrl!;
         final results = <int, String?>{}; // index -> error message or null for success
@@ -154,12 +154,11 @@ class _BulkUploadButtonState extends State<BulkUploadButton> {
             );
           },
         );
-        widget.onDone?.call();
+  widget.onDone?.call();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -196,6 +195,7 @@ class _BulkUploadButtonState extends State<BulkUploadButton> {
   void _showTemplate() {
     final headers = widget.templateHeaders!;
     final csv = headers.join(',');
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -212,11 +212,12 @@ class _BulkUploadButtonState extends State<BulkUploadButton> {
         actions: [
           TextButton(
             onPressed: () async {
+              // Capture navigator and messenger before the async gap to avoid using context afterwards
+              final nav = Navigator.of(ctx);
+              final messenger = ScaffoldMessenger.maybeOf(ctx) ?? ScaffoldMessenger.maybeOf(context);
               await Clipboard.setData(ClipboardData(text: csv));
-              if (mounted) Navigator.pop(ctx);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied headers to clipboard')));
-              }
+              nav.pop();
+              messenger?.showSnackBar(const SnackBar(content: Text('Copied headers to clipboard')));
             },
             child: const Text('Copy headers'),
           ),
@@ -251,12 +252,12 @@ class _BulkUploadButtonState extends State<BulkUploadButton> {
       }).toList();
       final csv = [headers.join(','), values.join(',')].join('\n');
       final bytes = Uint8List.fromList(utf8.encode(csv));
-      await FileSaver.instance.saveFile(name: 'sample.csv', bytes: bytes, ext: 'csv', mimeType: MimeType.csv);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sample CSV downloaded')));
+  await FileSaver.instance.saveFile(name: 'sample.csv', bytes: bytes, ext: 'csv', mimeType: MimeType.csv);
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sample CSV downloaded')));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
     }
   }
 }
