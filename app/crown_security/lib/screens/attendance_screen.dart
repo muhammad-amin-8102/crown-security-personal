@@ -1,6 +1,6 @@
+import 'package:crown_security/core/api.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -21,36 +21,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _loadAttendance() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('user_id');
-    final dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080/api/v1'));
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final sitesResp = await dio.get(
-        '/sites',
-        queryParameters: {'client_id': userId},
-      );
-      final sites = sitesResp.data as List?;
-      if (sites == null || sites.isEmpty) {
-        setState(() {
-          _loading = false;
-          _error = 'No site assigned.';
-        });
-        return;
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
       }
-      final siteId = sites.first['id'];
-      final attResp = await dio.get(
-        '/attendance',
-        queryParameters: {'siteId': siteId},
-      );
+      final response = await Api.dio.get('/attendance', queryParameters: {'siteId': siteId});
       setState(() {
-        _attendance = attResp.data;
-        _loading = false;
+        _attendance = response.data;
       });
     } catch (e) {
-      setState(() {
-        _loading = false;
-        _error = 'Failed to load attendance.';
-      });
+      _error = 'Failed to load attendance.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -58,27 +49,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Attendance')),
-      body:
-          _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? Center(child: Text(_error!))
-              : _attendance == null
-              ? const Center(child: Text('No data'))
-              : ListView.builder(
-                itemCount: _attendance!.length,
-                itemBuilder: (context, i) {
-                  final att = _attendance![i];
-                  return Card(
-                    child: ListTile(
-                      title: Text('Date: ${att['date']}'),
-                      subtitle: Text(
-                        'Present: ${att['status']}, Guard: ${att['guard_id']}',
-                      ),
-                    ),
-                  );
-                },
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(child: Text(_error!));
+    }
+    if (_attendance == null || _attendance!.isEmpty) {
+      return const Center(child: Text('No attendance data available.'));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAttendance,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _attendance!.length,
+        itemBuilder: (context, index) {
+          final att = _attendance![index];
+          final date = DateTime.tryParse(att['date'] ?? '') ?? DateTime.now();
+          return Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: Icon(
+                att['status'] == 'PRESENT' ? Icons.check_circle : Icons.cancel,
+                color: att['status'] == 'PRESENT' ? Colors.green : Colors.red,
               ),
+              title: Text('Guard: ${att['guard_id']}'),
+              subtitle: Text('Status: ${att['status']}'),
+              trailing: Text(DateFormat.yMMMd().format(date)),
+            ),
+          );
+        },
+      ),
     );
   }
 }

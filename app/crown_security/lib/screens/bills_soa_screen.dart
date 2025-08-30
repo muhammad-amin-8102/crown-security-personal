@@ -1,4 +1,6 @@
+import 'package:crown_security/core/api.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class BillsSoaScreen extends StatefulWidget {
   const BillsSoaScreen({super.key});
@@ -9,6 +11,7 @@ class BillsSoaScreen extends StatefulWidget {
 
 class _BillsSoaScreenState extends State<BillsSoaScreen> {
   List<dynamic>? _bills;
+  num? _outstanding;
   bool _loading = true;
   String? _error;
 
@@ -24,24 +27,24 @@ class _BillsSoaScreenState extends State<BillsSoaScreen> {
       _error = null;
     });
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(seconds: 1));
-      _bills = [
-        {
-          'id': 'B001',
-          'month': 'August 2025',
-          'amount': 50000.0,
-          'dueDate': '2025-09-15',
-          'status': 'Pending'
-        },
-        {
-          'id': 'B002',
-          'month': 'July 2025',
-          'amount': 48000.0,
-          'dueDate': '2025-08-15',
-          'status': 'Paid'
-        },
-      ];
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
+      }
+      final response = await Api.dio.get('/billing/soa', queryParameters: {'siteId': siteId});
+      final data = response.data;
+      setState(() {
+        if (data is Map) {
+          _bills = (data['items'] as List?) ?? <dynamic>[];
+          _outstanding = data['outstanding'] as num?;
+        } else if (data is List) {
+          _bills = data;
+          _outstanding = null;
+        } else {
+          _bills = <dynamic>[];
+          _outstanding = null;
+        }
+      });
     } catch (e) {
       _error = 'Failed to load bills.';
     } finally {
@@ -76,34 +79,44 @@ class _BillsSoaScreenState extends State<BillsSoaScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadBills,
-      child: ListView.builder(
+      child: ListView(
         padding: const EdgeInsets.all(16),
-        itemCount: _bills!.length,
-        itemBuilder: (context, index) {
-          final bill = _bills![index];
-          return Card(
-            elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              leading: Icon(
-                Icons.receipt,
-                color: bill['status'] == 'Paid' ? Colors.green : Colors.red,
-              ),
-              title: Text('Bill #${bill['id']} - ${bill['month']}',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(
-                  'Amount: ₹${bill['amount']} - Due: ${bill['dueDate']}'),
-              trailing: Text(
-                bill['status'],
-                style: TextStyle(
-                  color: bill['status'] == 'Paid' ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
+        children: [
+          if (_outstanding != null)
+            Card(
+              color: Colors.red.withOpacity(0.08),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: const Icon(Icons.warning_amber, color: Colors.red),
+                title: const Text('Outstanding Total'),
+                trailing: Text('₹${NumberFormat('#,##0.00').format(_outstanding)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
               ),
             ),
-          );
-        },
+          const SizedBox(height: 8),
+          ..._bills!.map((bill) {
+            return Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: Icon(
+                  Icons.receipt,
+                  color: (bill['status'] ?? '').toString().toLowerCase() == 'paid' ? Colors.green : Colors.red,
+                ),
+                title: Text('Bill #${bill['id'] ?? ''} - ${bill['month'] ?? ''}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('Amount: ₹${bill['amount'] ?? ''} - Due: ${bill['dueDate'] ?? bill['due_date'] ?? ''}'),
+                trailing: Text(
+                  bill['status']?.toString() ?? 'Pending',
+                  style: TextStyle(
+                    color: (bill['status'] ?? '').toString().toLowerCase() == 'paid' ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }

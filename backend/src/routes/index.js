@@ -11,6 +11,7 @@ router.use('/payroll', require('./modules/payroll'));
 router.use('/complaints', require('./modules/complaints'));
 router.use('/ratings', require('./modules/ratings'));
 router.use('/billing', require('./modules/billing'));
+router.use('/shifts', require('./modules/shifts'));
 
 module.exports = router;
 

@@ -16,6 +16,8 @@ import 'screens/salary_disbursement_screen.dart';
 import 'screens/complaints_screen.dart';
 import 'screens/rating_nps_screen.dart';
 import 'screens/bills_soa_screen.dart';
+import 'admin/admin_routes.dart';
+import 'core/api.dart';
 
 void main() {
   runApp(const CrownSecurityApp());
@@ -68,6 +70,7 @@ class CrownSecurityApp extends StatelessWidget {
         '/complaints': (context) => const ComplaintsScreen(),
         '/rating-nps': (context) => const RatingNpsScreen(),
         '/bills-soa': (context) => const BillsSoaScreen(),
+  '/admin': (context) => const AdminSection(),
       },
     );
   }
@@ -82,6 +85,19 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int _selectedIndex = 0;
+  bool _isAdmin = false;
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await Api.storage.read(key: 'role');
+    setState(() {
+      _isAdmin = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
+    });
+  }
   static final List<Widget> _screens = [
     DashboardScreen(),
     SiteProfileScreen(),
@@ -177,6 +193,14 @@ class _MainNavState extends State<MainNav> {
               },
             ),
             const Divider(),
+            if (_isAdmin)
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings),
+                title: const Text('Admin Management'),
+                onTap: () {
+                  Navigator.pushNamed(context, '/admin');
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),

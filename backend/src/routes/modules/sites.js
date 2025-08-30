@@ -29,4 +29,16 @@ router.patch('/:id', auth(), allow('ADMIN','CRO'), async (req,res)=>{
     res.json(site);
 });
 
+// Bulk upsert sites (admin)
+router.post('/bulk', auth(), allow('ADMIN','CRO'), async (req,res)=>{
+    try {
+        const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
+        if (!items.length) return res.status(400).json({ error: 'no_items' });
+        const rows = await Site.bulkCreate(items, { updateOnDuplicate: ['name','location','strength','rate_per_guard','agreement_start','agreement_end','area_officer_name','area_officer_phone','cro_name','cro_phone'] });
+        res.status(201).json({ upserted: rows.length });
+    } catch (e) {
+        res.status(400).json({ error: 'site_bulk_failed', message: e.message });
+    }
+});
+
 module.exports = router;

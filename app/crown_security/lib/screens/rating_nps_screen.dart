@@ -1,3 +1,4 @@
+import 'package:crown_security/core/api.dart';
 import 'package:flutter/material.dart';
 
 class RatingNpsScreen extends StatefulWidget {
@@ -25,11 +26,21 @@ class _RatingNpsScreenState extends State<RatingNpsScreen> {
       _error = null;
     });
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(seconds: 1));
-      // Dummy data
-      _currentRating = 4.2;
-      _currentNps = 8;
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
+      }
+  final response = await Api.dio.get('/ratings', queryParameters: {'siteId': siteId});
+      final list = response.data as List?;
+      final latest = (list != null && list.isNotEmpty) ? list[0] : null;
+      if (latest != null) {
+        setState(() {
+          final ratingVal = latest['rating'] ?? latest['rating_value'];
+          _currentRating = (ratingVal as num?)?.toDouble() ?? 3.0;
+          final nps = latest['npsScore'] ?? latest['nps_score'];
+          _currentNps = (nps is String) ? int.tryParse(nps) : (nps as int?);
+        });
+      }
     } catch (e) {
       _error = 'Failed to load rating data.';
     } finally {
@@ -42,11 +53,34 @@ class _RatingNpsScreenState extends State<RatingNpsScreen> {
   }
 
   Future<void> _submitRating() async {
-    // TODO: Implement API call to submit rating and NPS
-    print('Submitting rating: $_currentRating, NPS: $_currentNps');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Thank you for your feedback!')),
-    );
+    if (_currentNps == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an NPS score.')),
+      );
+      return;
+    }
+
+    try {
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
+      }
+      final now = DateTime.now();
+      final monthStr = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      await Api.dio.post('/ratings', data: {
+        'site_id': siteId,
+        'month': monthStr,
+        'rating_value': _currentRating,
+        'nps_score': _currentNps,
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thank you for your feedback!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to submit feedback.')),
+      );
+    }
   }
 
   @override

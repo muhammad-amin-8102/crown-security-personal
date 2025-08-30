@@ -49,6 +49,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
       _siteId = sites.first['id'];
+      // Store siteId for other screens to use
+      await Api.storage.write(key: 'site_id', value: _siteId);
       await _loadDashboard(_siteId!);
     } catch (e) {
       setState(() {
@@ -125,7 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          _data!['siteName'] ?? 'Site Name',
+                                          _data!['site']?['name'] ?? 'Site Name',
                                           style: const TextStyle(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,
@@ -165,7 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _buildMetricCard(
                                 context,
                                 title: 'Shift-wise Count',
-                                value: _data!['shiftWiseCount']?.toString() ?? 'N/A',
+                                value: _data!['latestShiftReport']?['shiftWiseCount']?.toString() ?? 'N/A',
                                 icon: Icons.people_alt,
                                 color: Colors.blue,
                                 onTap: () => Navigator.pushNamed(context, '/shift-report'),
@@ -173,7 +175,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _buildMetricCard(
                                 context,
                                 title: 'Attendance',
-                                value: _data!['tillDateAttendance']?.toString() ?? 'N/A',
+                                value: (() {
+                                  final att = _data!['tillDateAttendance'];
+                                  if (att is Map) {
+                                    final present = att['PRESENT'] ?? att['present'] ?? att['Present'];
+                                    return (present ?? 'N/A').toString();
+                                  }
+                                  return att?.toString() ?? 'N/A';
+                                })(),
                                 icon: Icons.check_circle_outline,
                                 color: Colors.green,
                                 onTap: () => Navigator.pushNamed(context, '/attendance'),
@@ -181,7 +190,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _buildMetricCard(
                                 context,
                                 title: 'Spend',
-                                value: '₹${_data!['tillDateSpend'] ?? '0'}',
+                                value: (() {
+                                  final s = _data!['tillDateSpend'];
+                                  return '₹${s ?? 0}';
+                                })(),
                                 icon: Icons.monetization_on,
                                 color: Colors.orange,
                                 onTap: () => Navigator.pushNamed(context, '/spend'),
@@ -189,7 +201,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _buildMetricCard(
                                 context,
                                 title: 'Outstanding Bills',
-                                value: _data!['outstandingBills']?.toString() ?? 'N/A',
+                                value: (() {
+                                  final soa = _data!['soa'];
+                                  if (soa is Map) {
+                                    final items = soa['items'];
+                                    if (items is List) return items.length.toString();
+                                  }
+                                  if (soa is List) return soa.length.toString();
+                                  return '0';
+                                })(),
                                 icon: Icons.receipt_long,
                                 color: Colors.red,
                                 onTap: () => Navigator.pushNamed(context, '/bills-soa'),
@@ -209,28 +229,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _buildDetailListItem(
                             context,
                             title: 'Latest Training',
-                            subtitle: _data!['latestTraining']?['topics_covered'] ?? 'No report',
+                            subtitle: (() {
+                              final lt = _data!['latestTraining'];
+                              if (lt == null) return 'No report';
+                              // Prefer numeric count if provided
+                              final topicsCovered = lt['topicsCovered'];
+                              if (topicsCovered != null) return 'Topics: ${topicsCovered.toString()}';
+                              // Fall back to topics_covered string or topics
+                              return (lt['topics_covered']?.toString() ?? lt['topics']?.toString() ?? 'No report');
+                            })(),
                             icon: Icons.model_training,
                             onTap: () => Navigator.pushNamed(context, '/training-report'),
                           ),
                           _buildDetailListItem(
                             context,
                             title: 'Salary Disbursement',
-                            subtitle: _data!['salaryDisbursement']?.toString() ?? 'No data available',
+                            subtitle: (() {
+                              final pr = _data!['payroll'];
+                              if (pr is Map) {
+                                return 'Status: ${pr['status'] ?? 'N/A'}';
+                              }
+                              return 'No data available';
+                            })(),
                             icon: Icons.payment,
                             onTap: () => Navigator.pushNamed(context, '/salary-disbursement'),
                           ),
                           _buildDetailListItem(
                             context,
                             title: 'Complaints & Suggestions',
-                            subtitle: '${_data!['complaintsCount'] ?? 0} open issues',
+                            subtitle: '${_data!['complaints']?.length ?? 0} open issues',
                             icon: Icons.comment,
                             onTap: () => Navigator.pushNamed(context, '/complaints'),
                           ),
                           _buildDetailListItem(
                             context,
                             title: 'Ratings & NPS',
-                            subtitle: 'NPS: ${_data!['monthlyNPS'] ?? 'N/A'}',
+                            subtitle: 'NPS: ${_data!['latestRating']?['npsScore']?.toString() ?? 'N/A'}',
                             icon: Icons.star,
                             onTap: () => Navigator.pushNamed(context, '/rating-nps'),
                           ),

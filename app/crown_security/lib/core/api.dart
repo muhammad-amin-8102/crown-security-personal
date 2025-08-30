@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -41,6 +42,19 @@ class Api {
       final user = response.data['user'];
       if (user != null && user['id'] != null) {
         await _storage.write(key: 'user_id', value: user['id']);
+        // Store full user JSON
+        try { await _storage.write(key: 'user_profile', value: jsonEncode(user)); } catch (_) {}
+        // Persist role for client-side gating (supports role or roles[])
+        try {
+          final dynamic rolesField = user['roles'];
+          String? role = user['role']?.toString();
+          if (role == null && rolesField is List && rolesField.isNotEmpty) {
+            role = rolesField.first.toString();
+          }
+          if (role != null) {
+            await _storage.write(key: 'role', value: role);
+          }
+        } catch (_) {}
       }
       return true;
     } catch (e) {
@@ -60,35 +74,88 @@ class Api {
         '/reports/summary',
         queryParameters: {'siteId': siteId, 'from': from, 'to': to},
       );
-      final data = response.data;
+      final data = response.data as Map<String, dynamic>;
 
-      // Fetch latest night round
-      final nightRoundRes = await dio.get('/night-rounds/latest', queryParameters: {'siteId': siteId});
-      data['latestNightRound'] = nightRoundRes.data;
+      // Set safe default values for all expected fields
+      data['latestNightRound'] = null;
+      data['latestTraining'] = null;
+      data['complaintsCount'] = 0;
+      data['monthlyNPS'] = null;
 
-      // Fetch latest training
-      final trainingRes = await dio.get('/trainings/latest', queryParameters: {'siteId': siteId});
-      if (trainingRes.data != null) {
-        // Ensure the data for the dashboard is structured correctly
-        data['latestTraining'] = {
-          'topics_covered': trainingRes.data['topics_covered']?.toString(),
-          // Pass the full object for the details screen
-          'full_report': trainingRes.data 
-        };
-      } else {
-        data['latestTraining'] = null;
+      // Re-enable API calls one by one
+      try {
+        final nightRoundRes = await dio.get('/night-rounds/latest', queryParameters: {'siteId': siteId});
+        data['latestNightRound'] = nightRoundRes.data;
+      } catch (e) {
+        // Keep default value if API fails
       }
 
-      // Fetch complaints count
-      final complaintsRes = await dio.get('/complaints', queryParameters: {'site_id': siteId});
-      data['complaintsCount'] = (complaintsRes.data as List).where((c) => c['status'] == 'OPEN').length;
-
-      // Fetch latest rating/nps
-      final ratingRes = await dio.get('/ratings', queryParameters: {'site_id': siteId});
-      if((ratingRes.data as List).isNotEmpty) {
-        data['monthlyNPS'] = (ratingRes.data as List).first['nps_score'];
+      try {
+        final trainingRes = await dio.get('/training/latest', queryParameters: {'siteId': siteId});
+        final tr = trainingRes.data;
+        // Normalize in case API returns a list instead of an object
+        data['latestTraining'] = (tr is List && tr.isNotEmpty) ? tr[0] : tr;
+      } catch (e) {
+        // Keep default value if API fails
       }
 
+      try {
+        final complaintsRes = await dio.get('/complaints', queryParameters: {'siteId': siteId, 'limit': 5});
+        data['complaints'] = complaintsRes.data;
+      } catch (e) {
+        // Keep default value if API fails
+      }
+
+      try {
+        final ratingRes = await dio.get('/ratings', queryParameters: {'siteId': siteId});
+        final rr = ratingRes.data;
+        if (rr is List) {
+          if (rr.isEmpty) {
+            data['latestRating'] = null;
+          } else {
+            final first = rr[0] as Map<String, dynamic>;
+            data['latestRating'] = {
+              ...first,
+              'rating': first['rating'] ?? first['rating_value'],
+              'npsScore': first['npsScore'] ?? first['nps_score'],
+            };
+          }
+        } else if (rr is Map<String, dynamic>) {
+          data['latestRating'] = {
+            ...rr,
+            'rating': rr['rating'] ?? rr['rating_value'],
+            'npsScore': rr['npsScore'] ?? rr['nps_score'],
+          };
+        } else {
+          data['latestRating'] = null;
+        }
+      } catch (e) {
+        // Keep default value if API fails
+      }
+
+      try {
+        final soaRes = await dio.get('/billing/soa', queryParameters: {'siteId': siteId});
+        data['soa'] = soaRes.data;
+      } catch (e) {
+        // Keep default value if API fails
+      }
+
+      try {
+        final payrollRes = await dio.get('/payroll/status', queryParameters: {'siteId': siteId});
+        data['payroll'] = payrollRes.data;
+      } catch (e) {
+        // Keep default value if API fails
+      }
+
+      try {
+        final shiftReportRes = await dio.get('/shifts/latest', queryParameters: {'siteId': siteId});
+        data['latestShiftReport'] = shiftReportRes.data;
+      } catch (e) {
+        // Keep default value if API fails
+      }
+
+  // Attendance and spend are already included in /reports/summary as
+  // tillDateAttendance (object) and tillDateSpend (number). Avoid overriding.
 
       return data;
     } catch (e) {

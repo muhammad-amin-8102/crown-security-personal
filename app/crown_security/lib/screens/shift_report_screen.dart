@@ -1,3 +1,4 @@
+import 'package:crown_security/core/api.dart';
 import 'package:flutter/material.dart';
 
 class ShiftReportScreen extends StatefulWidget {
@@ -24,14 +25,14 @@ class _ShiftReportScreenState extends State<ShiftReportScreen> {
       _error = null;
     });
     try {
-      // TODO: Replace with actual API call
-      // For now, using dummy data
-      await Future.delayed(const Duration(seconds: 1));
-      _shiftData = [
-        {'shift': 'Morning', 'guards': 5, 'time': '08:00 - 16:00'},
-        {'shift': 'Evening', 'guards': 4, 'time': '16:00 - 00:00'},
-        {'shift': 'Night', 'guards': 3, 'time': '00:00 - 08:00'},
-      ];
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
+      }
+      final response = await Api.dio.get('/shifts', queryParameters: {'siteId': siteId});
+      setState(() {
+        _shiftData = response.data;
+      });
     } catch (e) {
       _error = 'Failed to load shift report.';
     } finally {

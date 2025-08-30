@@ -1,3 +1,4 @@
+import 'package:crown_security/core/api.dart';
 import 'package:flutter/material.dart';
 
 class TrainingReportScreen extends StatefulWidget {
@@ -24,14 +25,15 @@ class _TrainingReportScreenState extends State<TrainingReportScreen> {
       _error = null;
     });
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(seconds: 1));
-      _report = {
-        'date': '2025-08-25',
-        'attendance': 12,
-        'topics_covered': 'Fire safety and emergency evacuation procedures.',
-        'trainer': 'Jane Smith',
-      };
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
+      }
+      final response = await Api.dio.get('/training/latest', queryParameters: {'siteId': siteId});
+      final tr = response.data;
+      setState(() {
+        _report = (tr is List && tr.isNotEmpty) ? tr[0] : tr;
+      });
     } catch (e) {
       _error = 'Failed to load training report.';
     } finally {

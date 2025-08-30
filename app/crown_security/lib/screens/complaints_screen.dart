@@ -1,3 +1,4 @@
+import 'package:crown_security/core/api.dart';
 import 'package:flutter/material.dart';
 
 class ComplaintsScreen extends StatefulWidget {
@@ -26,22 +27,14 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       _error = null;
     });
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(seconds: 1));
-      _complaints = [
-        {
-          'id': '1',
-          'description': 'Guard at Gate 1 was late.',
-          'status': 'Resolved',
-          'date': '2025-08-20'
-        },
-        {
-          'id': '2',
-          'description': 'Suggestion: Install a new light at the back.',
-          'status': 'Pending',
-          'date': '2025-08-28'
-        },
-      ];
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        throw Exception('Site ID not found');
+      }
+      final response = await Api.dio.get('/complaints', queryParameters: {'siteId': siteId});
+      setState(() {
+        _complaints = response.data;
+      });
     } catch (e) {
       _error = 'Failed to load complaints.';
     } finally {
@@ -55,12 +48,24 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
   Future<void> _addComplaint() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Implement API call to add complaint
       final description = _complaintController.text;
-      print('Adding complaint: $description');
-      _complaintController.clear();
-      Navigator.of(context).pop(); // Close the dialog
-      _loadComplaints(); // Refresh the list
+      try {
+        final siteId = await Api.storage.read(key: 'site_id');
+        if (siteId == null) {
+          throw Exception('Site ID not found');
+        }
+        await Api.dio.post('/complaints', data: {
+          'complaint_text': description,
+          'site_id': siteId,
+        });
+        _complaintController.clear();
+        Navigator.of(context).pop(); // Close the dialog
+        _loadComplaints(); // Refresh the list
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to submit complaint.')),
+        );
+      }
     }
   }
 
@@ -102,14 +107,14 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         itemCount: _complaints!.length,
         itemBuilder: (context, index) {
           final complaint = _complaints![index];
-          return Card(
+      return Card(
             elevation: 2,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
-              title: Text(complaint['description']),
-              subtitle: Text('Status: ${complaint['status']}'),
-              trailing: Text(complaint['date']),
+        title: Text(complaint['complaint_text'] ?? complaint['description'] ?? 'Complaint'),
+        subtitle: Text('Status: ${complaint['status'] ?? 'Open'}'),
+        trailing: Text(complaint['createdAt']?.toString() ?? complaint['date']?.toString() ?? ''),
             ),
           );
         },

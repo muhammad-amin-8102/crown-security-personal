@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/api.dart';
 
 class NightRoundScreen extends StatefulWidget {
   const NightRoundScreen({super.key});
@@ -24,13 +25,13 @@ class _NightRoundScreenState extends State<NightRoundScreen> {
       _error = null;
     });
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(seconds: 1));
-      _report = {
-        'date': '2025-08-30',
-        'findings': 'All quiet. Guard at post 3 was found alert and active. Gate 2 light needs replacement.',
-        'officer': 'John Doe',
-      };
+      final siteId = await Api.storage.read(key: 'site_id');
+      if (siteId == null) {
+        _error = 'No site selected.';
+        return;
+      }
+      final response = await Api.dio.get('/night-rounds/latest', queryParameters: {'siteId': siteId});
+      _report = response.data;
     } catch (e) {
       _error = 'Failed to load night round report.';
     } finally {
