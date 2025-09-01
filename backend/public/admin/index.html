@@ -1,164 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crown Security Admin Portal</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 500px;
-            margin: 20px;
-        }
-        .logo {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 16px;
-        }
-        .status {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 10px 0;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .status-item:last-child {
-            border-bottom: none;
-        }
-        .badge {
-            background: #28a745;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge.building {
-            background: #ffc107;
-            color: #333;
-        }
-        .instructions {
-            background: #e9f4ff;
-            border: 1px solid #b3d9ff;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-            text-align: left;
-        }
-        .instructions h3 {
-            margin-top: 0;
-            color: #0066cc;
-        }
-        .code {
-            background: #f1f3f4;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
-        }
-        .btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            text-decoration: none;
-            display: inline-block;
-            margin: 10px 5px;
-            transition: background 0.2s;
-        }
-        .btn:hover {
-            background: #0056b3;
-        }
-        .btn.secondary {
-            background: #6c757d;
-        }
-        .btn.secondary:hover {
-            background: #545b62;
-        }
-    </style>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/admin/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="crown_security">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>crown_security</title>
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div class="container">
-        <div class="logo">👑</div>
-        <h1>Crown Security Admin Portal</h1>
-        <p class="subtitle">Web-based administration interface</p>
-        
-        <div class="status">
-            <div class="status-item">
-                <span>Backend API</span>
-                <span class="badge" id="api-status">Checking...</span>
-            </div>
-            <div class="status-item">
-                <span>Flutter Web App</span>
-                <span class="badge building">Build Required</span>
-            </div>
-            <div class="status-item">
-                <span>Database</span>
-                <span class="badge" id="db-status">Unknown</span>
-            </div>
-        </div>
-
-        <div class="instructions">
-            <h3>🏗️ Setup Required</h3>
-            <p>The Flutter web application needs to be built first:</p>
-            <p><strong>Windows:</strong> <span class="code">build-web.bat</span></p>
-            <p><strong>Linux/Mac:</strong> <span class="code">./build-web.sh</span></p>
-            <p><strong>Docker:</strong> <span class="code">docker-compose up -d</span></p>
-        </div>
-
-        <a href="/api/v1" class="btn secondary">API Documentation</a>
-        <a href="/health" class="btn secondary">Health Check</a>
-        <button class="btn" onclick="location.reload()">Refresh Status</button>
-    </div>
-
-    <script>
-        // Check API status
-        fetch('/api/health')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('api-status').textContent = 'Online';
-                document.getElementById('api-status').className = 'badge';
-            })
-            .catch(() => {
-                document.getElementById('api-status').textContent = 'Offline';
-                document.getElementById('api-status').className = 'badge building';
-            });
-
-        // Auto-refresh every 30 seconds
-        setTimeout(() => location.reload(), 30000);
-    </script>
+  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

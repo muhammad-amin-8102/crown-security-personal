@@ -63,7 +63,7 @@ Single Container:
 ## What Happens During Deployment
 
 ### Build Process (Multi-Stage)
-1. **Flutter Build**: Uses Flutter 3.35.2 with Dart SDK 3.7.2+ to compile web app
+1. **Flutter Build**: Uses Flutter 3.35.2 with correct base href `/admin/` for subdirectory serving
 2. **Backend Build**: Uses Node.js 22 (latest) to install dependencies
 3. **Final Assembly**: Combines everything into Alpine Linux production container
 
@@ -108,11 +108,15 @@ After deployment:
 # Check build logs in Render dashboard
 # Common issues:
 
-# 1. Flutter build command issues
+# 1. Flutter resource loading issues
+# Error: "GET /flutter_bootstrap.js 404" - resources loaded from wrong path
+# Solution: Added --base-href=/admin/ to Flutter build command for correct subdirectory serving
+
+# 2. Flutter build command issues
 # Error: "Could not find an option named '--web-renderer'"
 # Solution: Removed deprecated --web-renderer option from Flutter build command
 
-# 2. Flutter SDK version mismatch
+# 3. Flutter SDK version mismatch
 # Error: "Because crown_security requires SDK version ^3.7.2, version solving failed"
 # Solution: Updated to Flutter 3.35.2 which supports Dart SDK 3.7.2+
 

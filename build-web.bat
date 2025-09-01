@@ -26,7 +26,7 @@ flutter pub get
 
 REM Build for web
 echo 🏗️ Building Flutter web app...
-flutter build web --release --dart-define=API_BASE_URL=%API_BASE_URL%
+flutter build web --release --dart-define=API_BASE_URL=%API_BASE_URL% --base-href=/admin/
 
 REM Copy to backend public directory
 echo 📁 Copying build to backend...
