@@ -2,7 +2,7 @@
 # Multi-stage build for Crown Security API + Flutter Web
 
 # Flutter Web Build Stage
-FROM cirrusci/flutter:stable AS flutter-builder
+FROM ghcr.io/cirruslabs/flutter:3.24.3 AS flutter-builder
 
 # Set working directory
 WORKDIR /flutter-app
@@ -19,7 +19,7 @@ RUN flutter build web --release \
     --web-renderer canvaskit
 
 # Backend Build Stage
-FROM node:18-alpine AS backend-builder
+FROM node:22-alpine AS backend-builder
 
 # Set working directory
 WORKDIR /app
@@ -40,7 +40,7 @@ RUN npm ci --only=production && npm cache clean --force
 COPY backend/ ./
 
 # Final production stage
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set working directory
 WORKDIR /app
