@@ -14,10 +14,18 @@ async function connectWithRetry(retries = 5, delay = 5000) {
       console.log('✅ Database connected successfully');
       return true;
     } catch (error) {
-      console.log(`❌ Database connection failed (attempt ${i + 1}/${retries}):`, error.message);
+      console.log(`❌ Database connection failed (attempt ${i + 1}/${retries}):`);
+      console.log(`   Error type: ${error.name}`);
+      console.log(`   Error code: ${error.original?.code || 'N/A'}`);
+      console.log(`   Error message: ${error.message}`);
       
       if (i === retries - 1) {
         console.error('💥 All database connection attempts failed');
+        console.error('🔍 Troubleshooting tips:');
+        console.error('   1. Check if PostgreSQL service is "Available" in Render dashboard');
+        console.error('   2. Verify DATABASE_URL includes port :5432');
+        console.error('   3. Ensure DATABASE_URL has full hostname ending in .render.com');
+        console.error('   4. PostgreSQL service may take 1-2 minutes to start after deployment');
         throw error;
       }
       
@@ -33,6 +41,12 @@ async function connectWithRetry(retries = 5, delay = 5000) {
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 Port: ${port}`);
     console.log(`💾 Database URL: ${process.env.DATABASE_URL ? 'Set' : 'Not set'}`);
+    
+    // Debug database URL format (don't log password in production)
+    if (process.env.DATABASE_URL) {
+      const urlParts = process.env.DATABASE_URL.replace(/:[^:@]*@/, ':***@');
+      console.log(`🔍 DB URL format: ${urlParts}`);
+    }
     
     // Connect to database with retry logic
     await connectWithRetry();

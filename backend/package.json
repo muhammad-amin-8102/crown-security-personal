@@ -9,6 +9,7 @@
     "deploy": "npm run db:migrate && npm run db:seed",
     "render-build": "npm install",
     "render-start": "node src/server.js",
+    "test-db": "node test-db-connection.js",
     "db:create": "npx sequelize-cli db:create",
     "db:migrate": "npx sequelize-cli db:migrate",
     "db:seed": "npx sequelize-cli db:seed:all",
