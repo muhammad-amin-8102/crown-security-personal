@@ -1,12 +1,59 @@
-version: '3.9'
+version: '3.8'
+
 services:
-  db:
-    image: postgres:15
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: crown_security_db
     environment:
+      POSTGRES_DB: crown_security
       POSTGRES_USER: app_user
       POSTGRES_PASSWORD: app_pass
-      POSTGRES_DB: crown_security
-    ports: ["5432:5432"]
-    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d crown_security"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crown_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crown_security_api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://app_user:app_pass@postgres:5432/crown_security
+      JWT_ACCESS_SECRET: your_super_secure_jwt_access_secret_docker
+      JWT_REFRESH_SECRET: your_super_secure_jwt_refresh_secret_docker
+      JWT_ACCESS_TTL: 2592000
+      JWT_REFRESH_TTL: 2592000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - crown_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
-  pgdata:
+  postgres_data:
+    driver: local
+
+networks:
+  crown_network:
+    driver: bridge
