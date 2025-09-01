@@ -1,7 +1,8 @@
 const express = require('express');
-const { Shift } = require('../../../models');
+const { Shift, Site } = require('../../../models');
 const { auth } = require('../../middleware/auth');
 const { allow } = require('../../middleware/roles');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 
@@ -39,11 +40,21 @@ router.get('/latest', auth(), async (req, res) => {
       order: [['date', 'DESC']],
       limit: 2000,
     });
-    if (!rows.length) return res.json({ shiftWiseCount: 0 });
+    if (!rows.length) return res.json({ shiftWiseCount: 0, shiftBreakdown: [] });
+    
     const latestDate = rows[0].date;
     const sameDay = rows.filter(r => new Date(r.date).toDateString() === new Date(latestDate).toDateString());
+    
+    // Calculate breakdown by shift type
+    const agg = sameDay.reduce((acc, r) => {
+      acc[r.shift_type] = (acc[r.shift_type] || 0) + (r.guard_count || 0);
+      return acc;
+    }, {});
+    
+    const shiftBreakdown = Object.entries(agg).map(([shift, guards]) => ({ shift, guards }));
     const shiftWiseCount = sameDay.reduce((acc, r) => acc + (r.guard_count || 0), 0);
-    res.json({ shiftWiseCount });
+    
+    res.json({ shiftWiseCount, shiftBreakdown, latestDate });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -53,12 +64,31 @@ module.exports = router;
 
 // Raw list of shifts
 router.get('/list/all', auth(), allow('ADMIN','OFFICER'), async (req,res)=>{
-  const { siteId, from, to, limit } = req.query;
-  const where = {};
-  if (siteId) where.site_id = siteId;
-  // Optionally filter by date in future if added
-  const rows = await Shift.findAll({ where, order:[['date','DESC']], limit: Number(limit)||1000 });
-  res.json(rows);
+  try {
+    const { siteId, from, to, limit } = req.query;
+    const where = {};
+    if (siteId) where.site_id = siteId;
+    // Optionally filter by date in future if added
+    const rows = await Shift.findAll({ where, order:[['date','DESC']], limit: Number(limit)||1000 });
+    
+    // Enrich with site names
+    const siteIds = [...new Set(rows.map(r => r.site_id).filter(Boolean))];
+    let siteNameById = {};
+    if (siteIds.length) {
+      const sites = await Site.findAll({ where: { id: { [Op.in]: siteIds } }, attributes: ['id','name'] });
+      siteNameById = Object.fromEntries(sites.map(s => [s.id, s.name]));
+    }
+
+    const out = rows.map(r => {
+      const o = r.toJSON();
+      o.site_name = siteNameById[o.site_id] || 'Unknown Site';
+      return o;
+    });
+    
+    res.json(out);
+  } catch (e) {
+    res.status(500).json({ error: 'shifts_list_failed', message: e.message });
+  }
 });
 
 // Create single shift
@@ -68,6 +98,35 @@ router.post('/', auth(), allow('ADMIN','OFFICER'), async (req,res)=>{
     res.status(201).json(row);
   } catch (e) {
     res.status(400).json({ error: 'shift_create_failed', message: e.message });
+  }
+});
+
+// Update single shift
+router.put('/:id', auth(), allow('ADMIN','OFFICER'), async (req,res)=>{
+  try {
+    const { id } = req.params;
+    const [updated] = await Shift.update(req.body, { where: { id } });
+    if (updated === 0) {
+      return res.status(404).json({ error: 'shift_not_found' });
+    }
+    const row = await Shift.findByPk(id);
+    res.json(row);
+  } catch (e) {
+    res.status(400).json({ error: 'shift_update_failed', message: e.message });
+  }
+});
+
+// Delete single shift
+router.delete('/:id', auth(), allow('ADMIN'), async (req,res)=>{
+  try {
+    const { id } = req.params;
+    const deleted = await Shift.destroy({ where: { id } });
+    if (deleted === 0) {
+      return res.status(404).json({ error: 'shift_not_found' });
+    }
+    res.json({ message: 'shift_deleted' });
+  } catch (e) {
+    res.status(400).json({ error: 'shift_delete_failed', message: e.message });
   }
 });
 

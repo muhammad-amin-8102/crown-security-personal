@@ -1,6 +1,8 @@
 const router = require('express').Router();
 
 router.use('/auth', require('./modules/auth'));
+router.use('/users', require('./modules/users'));
+router.use('/guards', require('./modules/guards'));
 router.use('/sites', require('./modules/sites'));
 router.use('/reports', require('./modules/reports'));
 router.use('/attendance', require('./modules/attendance'));
@@ -11,6 +13,7 @@ router.use('/payroll', require('./modules/payroll'));
 router.use('/complaints', require('./modules/complaints'));
 router.use('/ratings', require('./modules/ratings'));
 router.use('/billing', require('./modules/billing'));
+router.use('/bills', require('./modules/billing')); // Alias for bills
 router.use('/shifts', require('./modules/shifts'));
 
 module.exports = router;

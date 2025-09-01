@@ -16,7 +16,7 @@ import 'screens/salary_disbursement_screen.dart';
 import 'screens/complaints_screen.dart';
 import 'screens/rating_nps_screen.dart';
 import 'screens/bills_soa_screen.dart';
-import 'admin/admin_routes.dart';
+import 'admin/admin_layout.dart';
 import 'core/api.dart';
 
 void main() {
@@ -88,7 +88,7 @@ class CrownSecurityApp extends StatelessWidget {
         '/complaints': (context) => const ComplaintsScreen(),
         '/rating-nps': (context) => const RatingNpsScreen(),
         '/bills-soa': (context) => const BillsSoaScreen(),
-  '/admin': (context) => const AdminSection(),
+  '/admin': (context) => const AdminLayout(),
       },
     );
   }
@@ -119,7 +119,7 @@ class _LaunchGateState extends State<LaunchGate> {
     }
     final role = await Api.storage.read(key: 'role');
     final isAdmin = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
-    setState(() { _child = isAdmin ? const AdminSection() : const MainNav(); });
+    setState(() { _child = isAdmin ? const AdminLayout() : const MainNav(); });
   }
 
   @override

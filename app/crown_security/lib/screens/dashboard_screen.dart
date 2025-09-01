@@ -223,10 +223,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
                             children: [
-                              _buildMetricCard(
+                              _buildShiftMetricCard(
                                 context,
                                 title: 'Shift-wise Count',
-                                value: _data!['latestShiftReport']?['shiftWiseCount']?.toString() ?? 'N/A',
+                                shiftData: _data!['latestShiftReport']?['shiftBreakdown'] ?? [],
+                                totalCount: _data!['latestShiftReport']?['shiftWiseCount']?.toString() ?? 'N/A',
                                 icon: Icons.people_alt,
                                 color: Theme.of(context).colorScheme.primary,
                                 onTap: () => Navigator.pushNamed(context, '/shift-report'),
@@ -470,6 +471,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShiftMetricCard(
+    BuildContext context, {
+    required String title,
+    required List<dynamic> shiftData,
+    required String totalCount,
+    required IconData icon,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: color, size: 24),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Total: $totalCount',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (shiftData.isNotEmpty) ...[
+                ...shiftData.map((shift) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${shift['shift']}:',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        '${shift['guards']}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                )).toList(),
+              ] else
+                const Text(
+                  'No shift data',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
             ],
           ),
         ),

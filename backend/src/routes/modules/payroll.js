@@ -2,7 +2,8 @@
 const router = require('express').Router();
 const { auth } = require('../../middleware/auth');
 const { allow } = require('../../middleware/roles');
-const { SalaryDisbursement } = require('../../../models');
+const { SalaryDisbursement, Site } = require('../../../models');
+const { Op } = require('sequelize');
 
 router.get('/status', auth(), allow('CLIENT','ADMIN','FINANCE'), async (req,res)=>{
 	const { siteId, month } = req.query; // YYYY-MM
@@ -15,11 +16,30 @@ router.get('/status', auth(), allow('CLIENT','ADMIN','FINANCE'), async (req,res)
 
 // List disbursements
 router.get('/', auth(), allow('ADMIN','FINANCE'), async (req,res)=>{
-	const { siteId, limit } = req.query;
-	const where = {};
-	if (siteId) where.site_id = siteId;
-	const rows = await SalaryDisbursement.findAll({ where, order:[['month','DESC']], limit: Number(limit)||500 });
-	res.json(rows);
+	try {
+		const { siteId, limit } = req.query;
+		const where = {};
+		if (siteId) where.site_id = siteId;
+		const rows = await SalaryDisbursement.findAll({ where, order:[['month','DESC']], limit: Number(limit)||500 });
+		
+		// Enrich with site names
+		const siteIds = [...new Set(rows.map(r => r.site_id).filter(Boolean))];
+		let siteNameById = {};
+		if (siteIds.length) {
+			const sites = await Site.findAll({ where: { id: { [Op.in]: siteIds } }, attributes: ['id','name'] });
+			siteNameById = Object.fromEntries(sites.map(s => [s.id, s.name]));
+		}
+
+		const out = rows.map(r => {
+			const o = r.toJSON();
+			o.site_name = siteNameById[o.site_id] || 'Unknown Site';
+			return o;
+		});
+		
+		res.json(out);
+	} catch (e) {
+		res.status(500).json({ error: 'payroll_list_failed', message: e.message });
+	}
 });
 
 module.exports = router;
@@ -32,6 +52,35 @@ router.post('/', auth(), allow('ADMIN','FINANCE'), async (req,res)=>{
 		res.status(201).json(row);
 	} catch (e) {
 		res.status(400).json({ error: 'payroll_create_failed', message: e.message });
+	}
+});
+
+// Update salary disbursement
+router.put('/:id', auth(), allow('ADMIN','FINANCE'), async (req,res)=>{
+	try {
+		const { id } = req.params;
+		const [updated] = await SalaryDisbursement.update(req.body, { where: { id } });
+		if (updated === 0) {
+			return res.status(404).json({ error: 'payroll_not_found' });
+		}
+		const row = await SalaryDisbursement.findByPk(id);
+		res.json(row);
+	} catch (e) {
+		res.status(400).json({ error: 'payroll_update_failed', message: e.message });
+	}
+});
+
+// Delete salary disbursement
+router.delete('/:id', auth(), allow('ADMIN'), async (req,res)=>{
+	try {
+		const { id } = req.params;
+		const deleted = await SalaryDisbursement.destroy({ where: { id } });
+		if (deleted === 0) {
+			return res.status(404).json({ error: 'payroll_not_found' });
+		}
+		res.json({ message: 'payroll_deleted' });
+	} catch (e) {
+		res.status(400).json({ error: 'payroll_delete_failed', message: e.message });
 	}
 });
 
