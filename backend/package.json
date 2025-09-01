@@ -5,8 +5,10 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "echo 'Build completed'",
+    "build": "npm install && npm run db:migrate",
     "deploy": "npm run db:migrate && npm run db:seed",
+    "render-build": "npm install",
+    "render-start": "npm run db:migrate && node src/server.js",
     "db:create": "npx sequelize-cli db:create",
     "db:migrate": "npx sequelize-cli db:migrate",
     "db:seed": "npx sequelize-cli db:seed:all",

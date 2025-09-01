@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: crown-security-api
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ACCESS_TTL
+        value: 2592000
+      - key: JWT_REFRESH_TTL
+        value: 2592000
+      - key: APP_NAME
+        value: Crown Security API
+      - key: APP_VERSION
+        value: 1.0.0
+    
+  - type: pserv
+    name: crown-security-db
+    env: postgresql
+    plan: free
+    ipAllowList: []
