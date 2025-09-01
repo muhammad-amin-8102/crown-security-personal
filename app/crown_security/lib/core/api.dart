@@ -1,17 +1,42 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 
 class Api {
   static final _storage = const FlutterSecureStorage();
+  
+  // API Base URL configuration
+  static String get baseUrl {
+    if (kIsWeb) {
+      // For web builds, use relative URL or current domain
+      if (kDebugMode) {
+        return const String.fromEnvironment(
+          'API_BASE_URL',
+          defaultValue: 'http://localhost:3000/api/v1',
+        );
+      } else {
+        // Production web build - use same domain
+        return '${Uri.base.origin}/api/v1';
+      }
+    } else {
+      // Mobile builds
+      return const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://localhost:3000/api/v1',
+      );
+    }
+  }
+  
   static final dio = Dio(
       BaseOptions(
-        baseUrl: const String.fromEnvironment(
-          'API_BASE',
-          defaultValue: 'http://localhost:8080/api/v1',
-        ),
+        baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
       ),
     )
     ..interceptors.add(
@@ -20,6 +45,14 @@ class Api {
           final token = await _storage.read(key: 'access_token');
           if (token != null) options.headers['Authorization'] = 'Bearer $token';
           handler.next(options);
+        },
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401) {
+            // Token expired, redirect to login
+            await _storage.delete(key: 'access_token');
+            await _storage.delete(key: 'refresh_token');
+          }
+          handler.next(error);
         },
       ),
     );

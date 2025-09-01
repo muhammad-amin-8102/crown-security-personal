@@ -26,7 +26,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: crown_security_api
     environment:
       NODE_ENV: development
