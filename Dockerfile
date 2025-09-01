@@ -2,7 +2,7 @@
 # Multi-stage build for Crown Security API + Flutter Web
 
 # Flutter Web Build Stage
-FROM ghcr.io/cirruslabs/flutter:3.27.0 AS flutter-builder
+FROM ghcr.io/cirruslabs/flutter:3.35.2 AS flutter-builder
 
 # Set working directory
 WORKDIR /flutter-app
