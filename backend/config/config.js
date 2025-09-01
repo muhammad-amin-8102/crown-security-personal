@@ -14,7 +14,6 @@ module.exports = {
   production: {
     use_env_variable: "DATABASE_URL",
     dialect: "postgres",
-    // dialectOptions: { ssl: false },
     dialectOptions: { 
       ssl: { require: true, rejectUnauthorized: false } 
     },
@@ -27,6 +26,6 @@ module.exports = {
     retry: {
       max: 3
     },
-    logging: true
+    logging: false
   }
 };

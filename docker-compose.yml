@@ -29,9 +29,13 @@ services:
       dockerfile: Dockerfile
     container_name: crown_security_api
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3000
-      DATABASE_URL: postgresql://app_user:app_pass@postgres:5432/crown_security
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: crown_security
+      DB_USER: app_user
+      DB_PASS: app_pass
       JWT_ACCESS_SECRET: your_super_secure_jwt_access_secret_docker
       JWT_REFRESH_SECRET: your_super_secure_jwt_refresh_secret_docker
       JWT_ACCESS_TTL: 2592000
