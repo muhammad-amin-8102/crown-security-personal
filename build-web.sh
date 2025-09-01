@@ -26,8 +26,7 @@ flutter pub get
 # Build for web
 echo "🏗️ Building Flutter web app..."
 flutter build web --release \
-    --dart-define=API_BASE_URL=${API_BASE_URL:-http://localhost:3000} \
-    --web-renderer canvaskit \
+    --dart-define=API_BASE_URL=${API_BASE_URL:-http://localhost:3000}
     --output build/web
 
 # Copy to backend public directory
