@@ -11,7 +11,7 @@ Single Container:
 ```
 
 ## Build Requirements
-- **Flutter**: 3.24.3+ (Dart SDK 3.7.2+)
+- **Flutter**: 3.27.0+ (Dart SDK 3.5.0+)
 - **Node.js**: 22.x (Latest LTS)
 - **PostgreSQL**: 15+
 
@@ -63,7 +63,7 @@ Single Container:
 ## What Happens During Deployment
 
 ### Build Process (Multi-Stage)
-1. **Flutter Build**: Uses Flutter 3.24.3 with Dart SDK 3.7.2+ to compile web app
+1. **Flutter Build**: Uses Flutter 3.27.0 with Dart SDK 3.5.0+ to compile web app
 2. **Backend Build**: Uses Node.js 22 (latest) to install dependencies
 3. **Final Assembly**: Combines everything into Alpine Linux production container
 
@@ -110,7 +110,7 @@ After deployment:
 
 # 1. Flutter SDK version mismatch
 # Error: "Because crown_security requires SDK version ^3.7.2, version solving failed"
-# Solution: Dockerfile now uses Flutter 3.24.3 with Dart SDK 3.7.2+
+# Solution: Adjusted pubspec.yaml to use Dart SDK ^3.5.0 for Docker compatibility
 
 # 2. Node.js dependency issues - check package.json
 # 3. Docker context issues - ensure all files are in git

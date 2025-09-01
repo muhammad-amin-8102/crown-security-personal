@@ -1,8 +1,27 @@
-# Full-stack Dockerfile (build from project root)
-# Multi-stage build for Crown Security API + Flutter Web
+# Alternative Dockerfile with latest Flutter (if you want to keep Dart ^3.7.2)
+# This uses Flutter master channel for latest Dart SDK
 
-# Flutter Web Build Stage
-FROM ghcr.io/cirruslabs/flutter:3.27.0 AS flutter-builder
+# Flutter Web Build Stage - Latest Flutter with Dart SDK 3.7.2+
+FROM ubuntu:22.04 AS flutter-builder
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    wget \
+    unzip \
+    xz-utils \
+    zip \
+    libgconf-2-4
+
+# Install Flutter from master channel (has latest Dart SDK)
+RUN git clone https://github.com/flutter/flutter.git /flutter && \
+    cd /flutter && \
+    git checkout master && \
+    /flutter/bin/flutter doctor
+
+# Set Flutter environment
+ENV PATH="/flutter/bin:${PATH}"
 
 # Set working directory
 WORKDIR /flutter-app
