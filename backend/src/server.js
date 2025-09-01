@@ -57,6 +57,20 @@ async function connectWithRetry(retries = 5, delay = 5000) {
       try {
         await sequelize.sync({ alter: false });
         console.log('✅ Database migrations completed');
+        
+        // Run seeders in production
+        console.log('🌱 Running database seeders...');
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+        
+        try {
+          await execAsync('npx sequelize-cli db:seed:all', { cwd: __dirname + '/..' });
+          console.log('✅ Database seeders completed');
+        } catch (seedError) {
+          console.log('⚠️ Seeder execution failed:', seedError.message);
+          // Don't fail startup if seeders fail (they might already be run)
+        }
       } catch (migrationError) {
         console.log('⚠️ Migration sync failed, continuing startup:', migrationError.message);
       }

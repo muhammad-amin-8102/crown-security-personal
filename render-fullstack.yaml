@@ -28,6 +28,14 @@ services:
         fromDatabase:
           name: crown-security-db
           property: connectionString
+      - key: ADMIN_EMAIL
+        value: admin@crownsecurity.com
+      - key: ADMIN_NAME
+        value: Crown Security Admin
+      - key: ADMIN_PHONE
+        value: +1-555-0123
+      - key: ADMIN_PASSWORD
+        value: Admin@2025!
     healthCheckPath: /health
     
   - type: pserv

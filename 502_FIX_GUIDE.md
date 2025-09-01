@@ -79,17 +79,24 @@ curl https://crown-security-fullstack.onrender.com/health
 curl https://crown-security-fullstack.onrender.com/debug
 ```
 
-### 2. Test Login Endpoint
+### 2. Manual Database Seeding
 ```bash
-curl -X POST https://crown-security-fullstack.onrender.com/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass"}'
+# Trigger manual seeding (if auto-seeding failed)
+curl -X POST https://crown-security-fullstack.onrender.com/seed
 ```
 
-### 3. Check Logs
+### 3. Test Login Endpoint
+```bash
+# Test with seeded admin user
+curl -X POST https://crown-security-fullstack.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@crownsecurity.com","password":"Admin@2025!"}'
+```
+
+### 4. Check Logs
 - Go to Render dashboard
 - View service logs for startup errors
-- Look for database connection messages
+- Look for database connection and seeding messages
 
 ## Common Issues & Solutions
 
@@ -120,6 +127,21 @@ Required for production:
 - [ ] `JWT_ACCESS_SECRET` (32+ characters)
 - [ ] `JWT_REFRESH_SECRET` (32+ characters)
 - [ ] `FRONTEND_URL` (your app domain)
+
+Admin User Configuration:
+- [ ] `ADMIN_EMAIL=admin@crownsecurity.com`
+- [ ] `ADMIN_NAME=Crown Security Admin`
+- [ ] `ADMIN_PHONE=+1-555-0123`
+- [ ] `ADMIN_PASSWORD=Admin@2025!`
+
+## Default Admin Credentials
+
+After deployment, you can login with:
+- **Email**: `admin@crownsecurity.com`
+- **Password**: `Admin@2025!`
+- **Role**: ADMIN (full access)
+
+⚠️ **Security Note**: Change the admin password after first login!
 
 ## Next Steps
 

@@ -61,6 +61,7 @@ app.get('/debug', (_req, res) => {
     DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ? 'Set' : 'Not set',
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ? 'Set' : 'Not set',
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'Not set',
   };
   
   res.json({
@@ -70,6 +71,41 @@ app.get('/debug', (_req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
+});
+
+// Manual seeding endpoint for production
+app.post('/seed', async (req, res) => {
+  try {
+    if (process.env.NODE_ENV !== 'production') {
+      return res.status(403).json({ error: 'Seeding only available in production' });
+    }
+    
+    console.log('🌱 Manual seeding triggered...');
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+    
+    const result = await execAsync('npx sequelize-cli db:seed:all', { 
+      cwd: __dirname + '/..',
+      timeout: 30000 
+    });
+    
+    console.log('✅ Manual seeding completed');
+    res.json({
+      success: true,
+      message: 'Database seeding completed',
+      output: result.stdout,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Manual seeding failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Seeding failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Legacy health check
