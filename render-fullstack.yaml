@@ -1,20 +1,25 @@
 services:
   - type: web
-    name: crown-security-api
+    name: crown-security-fullstack
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: ./
+    buildCommand: echo "Building full-stack app with root Dockerfile"
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
       - key: JWT_ACCESS_TTL
         value: 2592000
       - key: JWT_REFRESH_TTL
         value: 2592000
       - key: APP_NAME
-        value: Crown Security API
+        value: Crown Security Full-Stack
       - key: APP_VERSION
         value: 1.0.0
+      - key: FRONTEND_URL
+        value: https://crown-security-fullstack.onrender.com
     healthCheckPath: /health
     
   - type: pserv

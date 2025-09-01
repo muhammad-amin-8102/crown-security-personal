@@ -1,12 +1,12 @@
 # 🌐 Crown Security Web Portal Configuration
 
 ## 📋 Overview
-Your Crown Security project is now configured as a full-stack web application:
-- **Backend API**: Node.js/Express serving API at `/api/v1`
-- **Admin Portal**: Flutter web app served at `/admin`
-- **Single Domain**: Everything runs from one URL
+Your Crown Security project is configured as a full-stack web application with two deployment options:
+- **Docker Deployment**: Complete containerized solution
+- **Non-Docker Deployment**: Traditional server setup
+- **Architecture**: Flutter web admin portal + Node.js API backend
 
-## 🏗️ Architecture
+## 🏗️ Full-Stack Architecture
 
 ```
 https://your-domain.com/
@@ -18,109 +18,51 @@ https://your-domain.com/
 └── /health              → Health Check
 ```
 
-## 🚀 Quick Setup
+## 🚀 Deployment Options
 
-### Local Development
+### Option 1: Docker Deployment (Recommended)
+
+#### Local Development with Docker
 ```bash
-# 1. Build Flutter web app
-build-web.bat          # Windows
-./build-web.sh         # Linux/Mac
-
-# 2. Start backend with web portal
-cd backend
-npm run dev
-
-# 3. Access admin portal
-# http://localhost:3000/admin
-```
-
-### Docker Development
-```bash
-# 1. Build Flutter web first
-build-web.bat
-
-# 2. Start Docker services
+# Build and run full-stack application
 docker-compose up -d
 
-# 3. Access admin portal
-# http://localhost:3000/admin
-```
+# Access:
 
-## 🔧 Configuration Details
+## 🔧 Quick Commands
 
-### Flutter Web API Configuration
-- **Development**: Uses `http://localhost:3000/api/v1`
-- **Production**: Uses relative URLs (`/api/v1`)
-- **Web Detection**: Automatically detects web vs mobile
-- **CORS Handling**: Configured for same-origin requests
-
-### Backend Web Serving
-- **Static Files**: Serves Flutter build from `/admin`
-- **SPA Routing**: All `/admin/*` routes serve `index.html`
-- **API Routes**: All `/api/v1/*` routes serve API
-- **Security**: CSP headers configured for Flutter web
-
-### Build Process
-1. **Flutter Build**: Creates optimized web bundle
-2. **Copy Assets**: Moves files to `backend/public/admin/`
-3. **Backend Serve**: Express serves Flutter files
-
-## 📁 File Structure
-
-```
-crown_security/
-├── app/crown_security/           # Flutter source
-│   ├── lib/core/api.dart        # Web-aware API config
-│   └── .env.web                 # Web build config
-├── backend/
-│   ├── src/app.js               # Web serving config
-│   ├── public/admin/            # Flutter web build
-│   ├── Dockerfile               # Production (with Flutter)
-│   └── Dockerfile.local         # Development (without Flutter)
-├── build-web.sh/.bat            # Build scripts
-└── docker-compose.yml           # Local development
-```
-
-## 🌐 Deployment Options
-
-### Option 1: Manual Build + Deploy
+### Development
 ```bash
-# 1. Build Flutter web
-build-web.bat
+# Docker (Recommended)
+docker-compose up -d
 
-# 2. Deploy backend with Flutter files
-# (Flutter files are in backend/public/admin/)
+# Non-Docker
+build-web.bat && cd backend && npm run dev
 ```
 
-### Option 2: Docker with Multi-stage Build
+### Production Deployment
 ```bash
-# Dockerfile automatically builds Flutter and includes it
-docker build -t crown-security-app ./backend
+# Docker (Render.com)
+git push origin main
+# Then deploy via Render dashboard using render-fullstack.yaml
+
+# Non-Docker (VPS/Server)
+# Follow NON_DOCKER_DEPLOYMENT.md guide
 ```
 
-### Option 3: Render.com Docker Deployment
-```bash
-# Uses main Dockerfile with Flutter build stage
-# Set environment variables in Render dashboard
-```
+## 🌐 Access URLs
 
-## 🔧 Environment Variables
+After deployment:
+- **Admin Portal**: `https://your-domain.com/admin`
+- **API Docs**: `https://your-domain.com/api/v1`
+- **Health Check**: `https://your-domain.com/health`
 
-### Development (.env)
-```env
-NODE_ENV=development
-PORT=3000
-DB_HOST=localhost
-# ... other backend vars
-```
+## � Documentation
 
-### Production (Render.com)
-```env
-NODE_ENV=production
-DATABASE_URL=postgresql://...
-FRONTEND_URL=https://your-app.onrender.com
-# ... other backend vars
-```
+- `FULLSTACK_DEPLOYMENT.md` - Complete Docker deployment guide
+- `NON_DOCKER_DEPLOYMENT.md` - Traditional server deployment
+- `render-fullstack.yaml` - Render.com configuration
+- `docker-compose.yml` - Local development setup
 
 ### Flutter Web Build
 ```env

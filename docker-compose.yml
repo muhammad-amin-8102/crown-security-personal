@@ -22,12 +22,12 @@ services:
     networks:
       - crown_network
 
-  # Backend API
-  backend:
+  # Full-Stack Application (Flutter Web + Node.js API)
+  app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.local
-    container_name: crown_security_api
+      context: .
+      dockerfile: Dockerfile
+    container_name: crown_security_fullstack
     environment:
       NODE_ENV: development
       PORT: 3000
@@ -40,6 +40,7 @@ services:
       JWT_REFRESH_SECRET: your_super_secure_jwt_refresh_secret_docker
       JWT_ACCESS_TTL: 2592000
       JWT_REFRESH_TTL: 2592000
+      FRONTEND_URL: http://localhost:3000
     ports:
       - "3000:3000"
     depends_on:

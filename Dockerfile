@@ -1,4 +1,24 @@
+# Full-stack Dockerfile (build from project root)
 # Multi-stage build for Crown Security API + Flutter Web
+
+# Flutter Web Build Stage
+FROM cirrusci/flutter:stable AS flutter-builder
+
+# Set working directory
+WORKDIR /flutter-app
+
+# Copy Flutter project
+COPY app/crown_security/ ./
+
+# Get Flutter dependencies
+RUN flutter pub get
+
+# Build Flutter web app
+RUN flutter build web --release \
+    --dart-define=API_BASE_URL=/api/v1 \
+    --web-renderer canvaskit
+
+# Backend Build Stage
 FROM node:18-alpine AS backend-builder
 
 # Set working directory
@@ -11,30 +31,13 @@ RUN apk add --no-cache \
     curl
 
 # Copy package files
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy backend application code
-COPY . .
-
-# Flutter Web Build Stage
-FROM cirrusci/flutter:stable AS flutter-builder
-
-# Set working directory
-WORKDIR /flutter-app
-
-# Copy Flutter project
-COPY ../app/crown_security/ ./
-
-# Get Flutter dependencies
-RUN flutter pub get
-
-# Build Flutter web app
-RUN flutter build web --release \
-    --dart-define=API_BASE_URL=/api/v1 \
-    --web-renderer canvaskit
+COPY backend/ ./
 
 # Final production stage
 FROM node:18-alpine
@@ -64,7 +67,7 @@ RUN chown -R nodejs:nodejs /app
 # Switch to non-root user
 USER nodejs
 
-# Expose port (Render uses PORT env variable)
+# Expose port
 EXPOSE ${PORT:-10000}
 
 # Health check
