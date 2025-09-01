@@ -10,6 +10,10 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
       - key: JWT_ACCESS_TTL
         value: 2592000
       - key: JWT_REFRESH_TTL
@@ -20,6 +24,10 @@ services:
         value: 1.0.0
       - key: FRONTEND_URL
         value: https://crown-security-fullstack.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crown-security-db
+          property: connectionString
     healthCheckPath: /health
     
   - type: pserv

@@ -5,14 +5,57 @@ const { signAccess, signRefresh } = require('../../middleware/auth');
 
 
 // Login
-router.post('/login', async (req,res)=>{
-  const { email, password } = req.body;
-  const user = await User.findOne({ where: { email }});
-  if(!user) return res.status(400).json({ error: 'invalid_credentials' });
-  const ok = await bcrypt.compare(password, user.password_hash || '');
-  if(!ok) return res.status(400).json({ error: 'invalid_credentials' });
-  const payload = { id: user.id, role: user.role, name: user.name, email: user.email };
-  return res.json({ access_token: signAccess(payload), refresh_token: signRefresh(payload), user: payload });
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'missing_fields', 
+        message: 'Email and password are required' 
+      });
+    }
+    
+    // Find user
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ 
+        error: 'invalid_credentials', 
+        message: 'Invalid email or password' 
+      });
+    }
+    
+    // Check password
+    const ok = await bcrypt.compare(password, user.password_hash || '');
+    if (!ok) {
+      return res.status(400).json({ 
+        error: 'invalid_credentials', 
+        message: 'Invalid email or password' 
+      });
+    }
+    
+    // Create payload and tokens
+    const payload = { 
+      id: user.id, 
+      role: user.role, 
+      name: user.name, 
+      email: user.email 
+    };
+    
+    return res.json({ 
+      access_token: signAccess(payload), 
+      refresh_token: signRefresh(payload), 
+      user: payload 
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ 
+      error: 'server_error', 
+      message: 'Internal server error during login',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 });
 
 // Signup

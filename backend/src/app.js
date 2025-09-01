@@ -53,6 +53,25 @@ app.get('/health', (_req, res) => res.json({
   timestamp: new Date().toISOString()
 }));
 
+// Debug endpoint for production troubleshooting
+app.get('/debug', (_req, res) => {
+  const envVars = {
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT,
+    DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
+    JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ? 'Set' : 'Not set',
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ? 'Set' : 'Not set',
+  };
+  
+  res.json({
+    server: 'Crown Security API',
+    status: 'running',
+    environment: envVars,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // Legacy health check
 app.get('/api/health', (_req, res) => res.json({ ok: true, name: 'Crown Security', ts: Date.now() }));
 
