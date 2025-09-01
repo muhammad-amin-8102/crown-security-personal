@@ -8,7 +8,7 @@
     "build": "npm install && echo 'Build completed'",
     "build:web": "cd ../app/crown_security && flutter build web --release --dart-define=API_BASE_URL=/api/v1 && cp -r build/web/* ../../../backend/public/admin/",
     "build:web:win": "cd ..\\app\\crown_security && flutter build web --release --dart-define=API_BASE_URL=/api/v1 && xcopy build\\web\\* ..\\..\\..\\backend\\public\\admin\\ /E /Y",
-    "deploy": "npm run db:migrate && npm run db:seed",
+    "deploy": "npm run db:create && npm run db:migrate && npm run db:seed",
     "render-build": "npm install",
     "render-start": "node src/server.js",
     "docker:build": "docker build -t crown-security-api .",
