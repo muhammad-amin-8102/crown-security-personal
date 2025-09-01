@@ -55,24 +55,75 @@ async function connectWithRetry(retries = 5, delay = 5000) {
     if (!isDevelopment) {
       console.log('🔄 Running database migrations...');
       try {
-        await sequelize.sync({ alter: false });
-        console.log('✅ Database migrations completed');
-        
-        // Run seeders in production
-        console.log('🌱 Running database seeders...');
         const { exec } = require('child_process');
         const { promisify } = require('util');
         const execAsync = promisify(exec);
         
+        // Run migrations first
+        console.log('📋 Running Sequelize migrations...');
+        const migrationResult = await execAsync('npx sequelize-cli db:migrate', { 
+          cwd: __dirname + '/..',
+          timeout: 60000 
+        });
+        console.log('✅ Database migrations completed');
+        console.log('📄 Migration output:', migrationResult.stdout);
+        if (migrationResult.stderr) {
+          console.log('⚠️ Migration warnings:', migrationResult.stderr);
+        }
+        
+        // Wait a moment for migrations to fully commit
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Run seeders after migrations
+        console.log('🌱 Running database seeders...');
         try {
-          await execAsync('npx sequelize-cli db:seed:all', { cwd: __dirname + '/..' });
+          const seedResult = await execAsync('npx sequelize-cli db:seed:all', { 
+            cwd: __dirname + '/..',
+            timeout: 60000 
+          });
           console.log('✅ Database seeders completed');
+          console.log('📄 Seeder output:', seedResult.stdout);
+          if (seedResult.stderr) {
+            console.log('⚠️ Seeder warnings:', seedResult.stderr);
+          }
         } catch (seedError) {
           console.log('⚠️ Seeder execution failed:', seedError.message);
+          console.log('📄 Seeder stderr:', seedError.stderr || 'No stderr');
+          console.log('📄 Seeder stdout:', seedError.stdout || 'No stdout');
+          
+          // Attempt programmatic fallback for admin user
+          console.log('🔄 Attempting programmatic admin user creation...');
+          try {
+            const bcrypt = require('bcrypt');
+            const { User } = require('../models');
+            
+            const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@2025!', 10);
+            const [user, created] = await User.findOrCreate({
+              where: { email: process.env.ADMIN_EMAIL || 'admin@crownsecurity.com' },
+              defaults: {
+                name: process.env.ADMIN_NAME || 'Admin User',
+                email: process.env.ADMIN_EMAIL || 'admin@crownsecurity.com',
+                phone: process.env.ADMIN_PHONE || '+1234567890',
+                password_hash: hashedPassword,
+                role: 'ADMIN',
+                active: true
+              }
+            });
+            console.log(`✅ Admin user ${created ? 'created' : 'already exists'}`);
+          } catch (userError) {
+            console.log('❌ Programmatic admin user creation failed:', userError.message);
+          }
           // Don't fail startup if seeders fail (they might already be run)
         }
       } catch (migrationError) {
-        console.log('⚠️ Migration sync failed, continuing startup:', migrationError.message);
+        console.log('⚠️ Migration execution failed:', migrationError.message);
+        // Try basic sync as fallback
+        try {
+          await sequelize.sync({ alter: false });
+          console.log('✅ Database sync completed as fallback');
+        } catch (syncError) {
+          console.log('❌ Both migration and sync failed:', syncError.message);
+        }
       }
     }
     

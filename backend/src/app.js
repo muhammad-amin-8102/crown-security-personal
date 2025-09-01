@@ -53,24 +53,61 @@ app.get('/health', (_req, res) => res.json({
   timestamp: new Date().toISOString()
 }));
 
-// Debug endpoint for production troubleshooting
-app.get('/debug', (_req, res) => {
-  const envVars = {
-    NODE_ENV: process.env.NODE_ENV,
-    PORT: process.env.PORT,
-    DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
-    JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ? 'Set' : 'Not set',
-    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ? 'Set' : 'Not set',
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'Not set',
-  };
-  
-  res.json({
-    server: 'Crown Security API',
-    status: 'running',
-    environment: envVars,
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
+// Debug endpoint to check database tables
+app.get('/debug', async (req, res) => {
+  try {
+    console.log('🔍 Debug endpoint called - checking database state...');
+    
+    // Get all tables
+    const [tables] = await sequelize.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name;
+    `);
+    
+    console.log('📋 Available tables:', tables);
+    
+    // Check Users table specifically
+    let usersInfo = 'Table not found';
+    try {
+      const [usersResult] = await sequelize.query(`
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'Users' AND table_schema = 'public'
+        ORDER BY ordinal_position;
+      `);
+      usersInfo = usersResult;
+    } catch (usersError) {
+      usersInfo = `Error checking Users table: ${usersError.message}`;
+    }
+    
+    // Check if migrations were run
+    let migrationsInfo = 'SequelizeMeta table not found';
+    try {
+      const [migrationResult] = await sequelize.query(`
+        SELECT name FROM "SequelizeMeta" ORDER BY name;
+      `);
+      migrationsInfo = migrationResult;
+    } catch (migError) {
+      migrationsInfo = `Error checking migrations: ${migError.message}`;
+    }
+    
+    res.json({
+      database_url: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      tables: tables.map(t => t.table_name),
+      users_table_info: usersInfo,
+      migrations_run: migrationsInfo,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Debug endpoint error:', error);
+    res.status(500).json({
+      error: 'Debug failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Manual seeding endpoint for production
@@ -80,28 +117,38 @@ app.post('/seed', async (req, res) => {
       return res.status(403).json({ error: 'Seeding only available in production' });
     }
     
-    console.log('🌱 Manual seeding triggered...');
+    console.log('🔄 Manual migration and seeding triggered...');
     const { exec } = require('child_process');
     const { promisify } = require('util');
     const execAsync = promisify(exec);
     
-    const result = await execAsync('npx sequelize-cli db:seed:all', { 
+    // Run migrations first
+    console.log('📋 Running migrations...');
+    const migrationResult = await execAsync('npx sequelize-cli db:migrate', { 
       cwd: __dirname + '/..',
-      timeout: 30000 
+      timeout: 60000 
     });
     
-    console.log('✅ Manual seeding completed');
+    // Then run seeders
+    console.log('🌱 Running seeders...');
+    const seedResult = await execAsync('npx sequelize-cli db:seed:all', { 
+      cwd: __dirname + '/..',
+      timeout: 60000 
+    });
+    
+    console.log('✅ Manual migration and seeding completed');
     res.json({
       success: true,
-      message: 'Database seeding completed',
-      output: result.stdout,
+      message: 'Database migration and seeding completed',
+      migration_output: migrationResult.stdout,
+      seed_output: seedResult.stdout,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ Manual seeding failed:', error.message);
+    console.error('❌ Manual migration/seeding failed:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Seeding failed',
+      error: 'Migration/Seeding failed',
       message: error.message,
       timestamp: new Date().toISOString()
     });
