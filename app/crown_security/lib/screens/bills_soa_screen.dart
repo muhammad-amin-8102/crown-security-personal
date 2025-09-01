@@ -95,6 +95,10 @@ class _BillsSoaScreenState extends State<BillsSoaScreen> {
             ),
           const SizedBox(height: 8),
           ..._bills!.map((bill) {
+            final due = bill['dueDate'] ?? bill['due_date'];
+            final dueDt = due is String ? DateTime.tryParse(due) : (due is DateTime ? due : null);
+            final dueStr = dueDt != null ? DateFormat('dd-MM-yyyy').format(dueDt) : (due?.toString() ?? '');
+            final code = (bill['code'] ?? (bill['id']?.toString().substring(0,8))).toString();
             return Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -103,9 +107,9 @@ class _BillsSoaScreenState extends State<BillsSoaScreen> {
                   Icons.receipt,
                   color: (bill['status'] ?? '').toString().toLowerCase() == 'paid' ? Colors.green : Colors.red,
                 ),
-                title: Text('Bill #${bill['id'] ?? ''} - ${bill['month'] ?? ''}',
+                title: Text('Bill $code',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('Amount: ₹${bill['amount'] ?? ''} - Due: ${bill['dueDate'] ?? bill['due_date'] ?? ''}'),
+                subtitle: Text('Amount: ₹${bill['amount'] ?? ''}  •  Due: $dueStr'),
                 trailing: Text(
                   bill['status']?.toString() ?? 'Pending',
                   style: TextStyle(

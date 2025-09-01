@@ -21,11 +21,11 @@ router.get('/summary', auth(), allow('CLIENT','ADMIN','OFFICER','CRO','FINANCE')
       shiftWiseCount[day][s.shift_type] += s.guard_count;
     }
 
-    const att = await Attendance.findAll({ where: { site_id: siteId, date: { [Op.lte]: to || new Date() }}, raw: true });
+  const att = await Attendance.findAll({ where: { site_id: siteId, date: range }, raw: true });
     const tillDateAttendance = { PRESENT:0, ABSENT:0, LEAVE:0 };
     att.forEach(a => tillDateAttendance[a.status] = (tillDateAttendance[a.status]||0)+1);
 
-    const spendSum = await Spend.sum('amount', { where: { site_id: siteId, date: { [Op.lte]: to || new Date() } }});
+  const spendSum = await Spend.sum('amount', { where: { site_id: siteId, date: range }});
     const salary = await SalaryDisbursement.findOne({ where: { site_id: siteId }, order: [['month','DESC']] });
     const outstandingBills = await Bill.findAll({ where: { site_id: siteId, status: 'OUTSTANDING' }, order: [['due_date','ASC']], limit: 10 });
 

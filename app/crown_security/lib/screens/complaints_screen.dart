@@ -116,7 +116,15 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             child: ListTile(
         title: Text(complaint['complaint_text'] ?? complaint['description'] ?? 'Complaint'),
         subtitle: Text('Status: ${complaint['status'] ?? 'Open'}'),
-        trailing: Text(complaint['createdAt']?.toString() ?? complaint['date']?.toString() ?? ''),
+        trailing: Text((() {
+          final v = complaint['createdAt'] ?? complaint['date'];
+          if (v == null) return '';
+          DateTime? d;
+          if (v is String) d = DateTime.tryParse(v);
+          if (v is DateTime) d = v;
+          if (d == null) return v.toString();
+          return '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+        })()),
             ),
           );
         },

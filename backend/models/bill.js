@@ -19,6 +19,14 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true
     },
+    code: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
+      validate: {
+        len: [4, 64]
+      }
+    },
     site_id: DataTypes.UUID,
     amount: DataTypes.DECIMAL,
     due_date: DataTypes.DATE,
@@ -27,6 +35,23 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'Bill',
+  });
+
+  // Ensure code exists before validation so validators pass
+  Bill.beforeValidate((bill) => {
+    if (!bill.code) {
+      const idPart = (bill.id ? String(bill.id) : '').replace(/-/g, '').slice(0, 8).toUpperCase();
+      bill.code = `BILL-${idPart || Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    }
+  });
+
+  Bill.beforeBulkCreate((rows) => {
+    rows.forEach((bill) => {
+      if (!bill.code) {
+        const idPart = (bill.id ? String(bill.id) : '').replace(/-/g, '').slice(0, 8).toUpperCase();
+        bill.code = `BILL-${idPart || Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+      }
+    });
   });
   return Bill;
 };

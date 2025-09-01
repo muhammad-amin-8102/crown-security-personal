@@ -12,13 +12,13 @@ module.exports = {
     const clientId = siteRow.client_id;
 
     // 1) Shifts (a couple of recent entries)
-  await queryInterface.bulkInsert('Shifts', [
+    await queryInterface.bulkInsert('Shifts', [
       {
         id: Sequelize.literal('uuid_generate_v4()'),
         site_id: siteId,
         date: new Date(),
         shift_type: 'DAY',
-    guard_count: 8,
+        guard_count: 8,
         createdAt: new Date(), updatedAt: new Date(),
       },
       {
@@ -26,37 +26,59 @@ module.exports = {
         site_id: siteId,
         date: new Date(Date.now() - 86400000),
         shift_type: 'NIGHT',
-    guard_count: 7,
+        guard_count: 7,
         createdAt: new Date(), updatedAt: new Date(),
       },
     ]);
 
-    // 2) Attendance (last 5 days, PRESENT for most)
-  const attendanceRows = [];
+    // 2) Guards (create some sample guards for this site)
+    const guardIds = [];
+    const guardNames = ['Rajesh Kumar', 'Amit Singh', 'Suresh Sharma', 'Vikram Patel', 'Rohit Gupta'];
+    for (let i = 0; i < guardNames.length; i++) {
+      await queryInterface.bulkInsert('Guards', [{
+        id: Sequelize.literal('uuid_generate_v4()'),
+        site_id: siteId,
+        name: guardNames[i],
+        phone: `9876543${(10 + i).toString().padStart(3, '0')}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }]);
+      // Get the actual UUID value that was generated
+      const [result] = await queryInterface.sequelize.query(
+        'SELECT id FROM "Guards" WHERE site_id = :siteId ORDER BY "createdAt" DESC LIMIT 1',
+        { replacements: { siteId }, type: Sequelize.QueryTypes.SELECT }
+      );
+      if (result) guardIds.push(result.id);
+    }
+
+    // 3) Attendance (last 5 days, PRESENT for most, using real guard IDs)
+    const attendanceRows = [];
     for (let i = 0; i < 5; i++) {
       const d = new Date(Date.now() - i * 86400000);
+      // Use one of the created guard IDs, cycling through them
+      const guardId = guardIds[i % guardIds.length];
       attendanceRows.push({
         id: Sequelize.literal('uuid_generate_v4()'),
         site_id: siteId,
-    guard_id: Sequelize.literal('uuid_generate_v4()'),
+        guard_id: guardId,
         date: d,
         status: i === 2 ? 'ABSENT' : 'PRESENT',
         createdAt: new Date(), updatedAt: new Date(),
       });
     }
-  await queryInterface.bulkInsert('Attendances', attendanceRows);
+    await queryInterface.bulkInsert('Attendances', attendanceRows);
 
-    // 3) Night Round (one latest)
+    // 4) Night Round (one latest)
     await queryInterface.bulkInsert('NightRounds', [{
       id: Sequelize.literal('uuid_generate_v4()'),
       site_id: siteId,
       date: new Date(),
-      officer_id: Sequelize.literal('uuid_generate_v4()'),
+      officer_id: guardIds[0], // Use the first guard as the officer
       findings: 'All posts checked. Minor lighting issue near Gate 2.',
       createdAt: new Date(), updatedAt: new Date(),
     }]);
 
-    // 4) Training Report (latest)
+    // 5) Training Report (latest)
     await queryInterface.bulkInsert('TrainingReports', [{
       id: Sequelize.literal('uuid_generate_v4()'),
       site_id: siteId,
@@ -66,7 +88,7 @@ module.exports = {
       createdAt: new Date(), updatedAt: new Date(),
     }]);
 
-    // 5) Salary Disbursement (one month)
+    // 6) Salary Disbursement (one month)
     await queryInterface.bulkInsert('SalaryDisbursements', [{
       id: Sequelize.literal('uuid_generate_v4()'),
       site_id: siteId,
@@ -76,7 +98,7 @@ module.exports = {
       createdAt: new Date(), updatedAt: new Date(),
     }]);
 
-    // 6) Complaints (a couple)
+    // 7) Complaints (a couple)
     await queryInterface.bulkInsert('Complaints', [
       {
         id: Sequelize.literal('uuid_generate_v4()'),
@@ -96,7 +118,7 @@ module.exports = {
       },
     ]);
 
-    // 7) Ratings (current month)
+    // 8) Ratings (current month)
     await queryInterface.bulkInsert('Ratings', [{
       id: Sequelize.literal('uuid_generate_v4()'),
       site_id: siteId,
@@ -107,10 +129,11 @@ module.exports = {
       createdAt: new Date(), updatedAt: new Date(),
     }]);
 
-    // 8) Bills (SOA)
-  await queryInterface.bulkInsert('Bills', [
+    // 9) Bills (SOA)
+    await queryInterface.bulkInsert('Bills', [
       {
         id: Sequelize.literal('uuid_generate_v4()'),
+        code: Sequelize.literal(`'BILL-' || UPPER(SUBSTRING(REPLACE(CAST(uuid_generate_v4() AS TEXT), '-', '') FROM 1 FOR 8))`),
         site_id: siteId,
         amount: 45000,
         due_date: new Date(Date.now() + 86400000 * 10),
@@ -119,6 +142,7 @@ module.exports = {
       },
       {
         id: Sequelize.literal('uuid_generate_v4()'),
+        code: Sequelize.literal(`'BILL-' || UPPER(SUBSTRING(REPLACE(CAST(uuid_generate_v4() AS TEXT), '-', '') FROM 1 FOR 8))`),
         site_id: siteId,
         amount: 43000,
         due_date: new Date(Date.now() - 86400000 * 20),
@@ -127,7 +151,7 @@ module.exports = {
       }
     ]);
 
-    // 9) Spend (couple of entries)
+    // 10) Spend (couple of entries)
     await queryInterface.bulkInsert('Spends', [
       {
         id: Sequelize.literal('uuid_generate_v4()'),
@@ -156,8 +180,9 @@ module.exports = {
     );
     if (!siteRow) return;
     const siteId = siteRow.id;
+    await queryInterface.bulkDelete('Guards', { site_id: siteId });
     await queryInterface.bulkDelete('Shifts', { site_id: siteId });
-    await queryInterface.bulkDelete('Attendance', { site_id: siteId });
+    await queryInterface.bulkDelete('Attendances', { site_id: siteId });
     await queryInterface.bulkDelete('NightRounds', { site_id: siteId });
     await queryInterface.bulkDelete('TrainingReports', { site_id: siteId });
     await queryInterface.bulkDelete('SalaryDisbursements', { site_id: siteId });

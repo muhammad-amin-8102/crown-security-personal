@@ -64,7 +64,7 @@ class _NightRoundScreenState extends State<NightRoundScreen> {
       return const Center(child: Text('No report available.'));
     }
 
-    return RefreshIndicator(
+  return RefreshIndicator(
       onRefresh: _loadNightRoundReport,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -76,19 +76,35 @@ class _NightRoundScreenState extends State<NightRoundScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetailRow(Icons.calendar_today, 'Date', _report!['date']),
+                _buildDetailRow(
+                  Icons.calendar_today,
+                  'Date',
+                  (() {
+                    final v = _report!['date'] ?? _report!['createdAt'];
+                    if (v == null) return 'N/A';
+                    DateTime? d;
+                    if (v is String) d = DateTime.tryParse(v);
+                    if (v is DateTime) d = v;
+                    if (d == null) return v.toString();
+                    return '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+                  })(),
+                ),
                 const Divider(height: 24),
-                _buildDetailRow(Icons.person, 'Officer', _report!['officer']),
+                _buildDetailRow(
+                  Icons.person,
+                  'Officer',
+                  (() {
+                    final v = _report!['officer'] ?? _report!['officer_name'] ?? _report!['officerId'] ?? _report!['officer_id'];
+                    return (v == null) ? 'N/A' : v.toString();
+                  })(),
+                ),
                 const Divider(height: 24),
                 Text(
                   'Findings:',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _report!['findings'],
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text((_report!['findings'] ?? 'No findings').toString(), style: Theme.of(context).textTheme.bodyLarge),
               ],
             ),
           ),

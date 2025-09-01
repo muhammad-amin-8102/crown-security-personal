@@ -89,11 +89,27 @@ class _SalaryDisbursementScreenState extends State<SalaryDisbursementScreen> {
                     : Colors.orange,
               ),
               title: Text(
-                (_status!['month'] ?? 'Current Cycle').toString(),
+                (() {
+                  final v = _status!['month'];
+                  if (v == null) return 'Current Cycle';
+                  DateTime? d;
+                  if (v is String) d = DateTime.tryParse(v);
+                  if (v is DateTime) d = v;
+                  if (d == null) return v.toString();
+                  return '${d.month.toString().padLeft(2, '0')}-${d.year}';
+                })(),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text('Status: ${_status!['status'] ?? 'N/A'}'),
-              trailing: Text('Date: ${_status!['date_paid'] ?? _status!['date'] ?? '-'}'),
+              trailing: Text('Date: ${(() {
+                final v = _status!['date_paid'] ?? _status!['date'];
+                if (v == null) return '-';
+                DateTime? d;
+                if (v is String) d = DateTime.tryParse(v);
+                if (v is DateTime) d = v;
+                if (d == null) return v.toString();
+                return '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+              })()}'),
             ),
           ),
         ],

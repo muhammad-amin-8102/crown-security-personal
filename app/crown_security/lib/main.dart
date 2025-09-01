@@ -31,23 +31,41 @@ class CrownSecurityApp extends StatelessWidget {
     return MaterialApp(
       title: 'Crown Security',
       theme: ThemeData(
-        primaryColor: const Color(0xFF1A237E),
-        colorScheme: ColorScheme.fromSwatch(
-          primarySwatch: Colors.indigo,
-        ).copyWith(secondary: const Color(0xFFF9A825)),
+        scaffoldBackgroundColor: Colors.white,
+        primaryColor: const Color(0xFFCFAE02),
+        colorScheme: const ColorScheme(
+          brightness: Brightness.light,
+          primary: Color(0xFFCFAE02),
+          onPrimary: Colors.white,
+          secondary: Color(0xFFCFAE02),
+          onSecondary: Colors.white,
+          error: Colors.red,
+          onError: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black87,
+          background: Colors.white,
+          onBackground: Colors.black87,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFCFAE02),
+          foregroundColor: Colors.white,
+          elevation: 1,
+        ),
         textTheme: GoogleFonts.robotoTextTheme(Theme.of(context).textTheme),
         cardTheme: const CardThemeData(
           margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1A237E),
+            backgroundColor: const Color(0xFFCFAE02),
+            foregroundColor: Colors.white,
           ),
         ),
       ),
-      home: const MainNav(),
+  home: const LaunchGate(),
       routes: {
         '/login': (context) => const LoginScreen(),
+  '/main': (context) => const MainNav(),
         '/signup': (context) => const SignupScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         '/password-reset-sent': (context) => const PasswordResetSentScreen(),
@@ -76,6 +94,40 @@ class CrownSecurityApp extends StatelessWidget {
   }
 }
 
+class LaunchGate extends StatefulWidget {
+  const LaunchGate({super.key});
+
+  @override
+  State<LaunchGate> createState() => _LaunchGateState();
+}
+
+class _LaunchGateState extends State<LaunchGate> {
+  Widget? _child;
+
+  @override
+  void initState() {
+    super.initState();
+    _decide();
+  }
+
+  Future<void> _decide() async {
+    final token = await Api.storage.read(key: 'access_token');
+    if (!mounted) return;
+    if (token == null) {
+      setState(() { _child = const LoginScreen(); });
+      return;
+    }
+    final role = await Api.storage.read(key: 'role');
+    final isAdmin = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
+    setState(() { _child = isAdmin ? const AdminSection() : const MainNav(); });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _child ?? const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}
+
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
 
@@ -97,6 +149,11 @@ class _MainNavState extends State<MainNav> {
     setState(() {
       _isAdmin = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
     });
+    // If admin-type role, immediately send to admin dashboard and keep client shell hidden
+    if (mounted && _isAdmin) {
+      // replace so there's no back to client shell
+      Navigator.of(context).pushReplacementNamed('/admin');
+    }
   }
   static final List<Widget> _screens = [
     DashboardScreen(),
@@ -113,11 +170,15 @@ class _MainNavState extends State<MainNav> {
 
   @override
   Widget build(BuildContext context) {
+    // For admin roles, show an empty container; navigation is redirected to /admin above
+    if (_isAdmin) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1A237E),
+  selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         items: const [
@@ -139,7 +200,7 @@ class _MainNavState extends State<MainNav> {
           ),
         ],
       ),
-      drawer: Drawer(
+  drawer: Drawer(
         child: ListView(
           children: [
             const DrawerHeader(child: Text('Crown Security')),
@@ -193,14 +254,6 @@ class _MainNavState extends State<MainNav> {
               },
             ),
             const Divider(),
-            if (_isAdmin)
-              ListTile(
-                leading: const Icon(Icons.admin_panel_settings),
-                title: const Text('Admin Management'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/admin');
-                },
-              ),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),

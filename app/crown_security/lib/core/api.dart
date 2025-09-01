@@ -83,7 +83,7 @@ class Api {
       data['monthlyNPS'] = null;
 
       // Re-enable API calls one by one
-      try {
+  try {
         final nightRoundRes = await dio.get('/night-rounds/latest', queryParameters: {'siteId': siteId});
         data['latestNightRound'] = nightRoundRes.data;
       } catch (e) {
@@ -133,14 +133,14 @@ class Api {
         // Keep default value if API fails
       }
 
-      try {
+  try {
         final soaRes = await dio.get('/billing/soa', queryParameters: {'siteId': siteId});
         data['soa'] = soaRes.data;
       } catch (e) {
         // Keep default value if API fails
       }
 
-      try {
+  try {
         final payrollRes = await dio.get('/payroll/status', queryParameters: {'siteId': siteId});
         data['payroll'] = payrollRes.data;
       } catch (e) {
@@ -152,6 +152,42 @@ class Api {
         data['latestShiftReport'] = shiftReportRes.data;
       } catch (e) {
         // Keep default value if API fails
+      }
+
+      // Fetch site details for header card
+      try {
+        final siteRes = await dio.get('/sites/$siteId');
+        data['site'] = siteRes.data;
+      } catch (e) {
+        // ignore
+      }
+
+      // Compute attendance counts for the same range used by the dashboard
+      try {
+        final attRes = await dio.get('/attendance', queryParameters: {
+          'siteId': siteId,
+          'from': from,
+          'to': to,
+        });
+        List list;
+        final res = attRes.data;
+        if (res is List) {
+          list = res;
+        } else if (res is Map && res['items'] is List) {
+          list = (res['items'] as List);
+        } else {
+          list = const [];
+        }
+        final upper = (String? s) => (s ?? '').toUpperCase();
+        final present = list.where((e) => upper(e['status']) == 'PRESENT').length;
+        final absent = list.where((e) => upper(e['status']) == 'ABSENT').length;
+        data['tillDateAttendance'] = {
+          'PRESENT': present,
+          'ABSENT': absent,
+          'TOTAL': list.length,
+        };
+      } catch (e) {
+        // ignore
       }
 
   // Attendance and spend are already included in /reports/summary as

@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-function signAccess(payload){ return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, { expiresIn: +process.env.JWT_ACCESS_TTL || 900 }); }
-function signRefresh(payload){ return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: +process.env.JWT_REFRESH_TTL || 1209600 }); }
+// Default TTLs to 30 days if env not set
+const THIRTY_DAYS = 60 * 60 * 24 * 30; // seconds
+function signAccess(payload){ return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, { expiresIn: +process.env.JWT_ACCESS_TTL || THIRTY_DAYS }); }
+function signRefresh(payload){ return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: +process.env.JWT_REFRESH_TTL || THIRTY_DAYS }); }
 
 function auth(required = true){
   return (req, res, next) => {

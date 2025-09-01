@@ -23,10 +23,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loading = false;
     });
-    if (!mounted) return;
     if (ok) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      // Capture navigator before async gap to avoid context use across awaits
+      final navigator = Navigator.of(context);
+      final role = await Api.storage.read(key: 'role');
+      final isAdminRole = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
+      if (!mounted) return;
+  navigator.pushReplacementNamed(isAdminRole ? '/admin' : '/main');
     } else {
+      if (!mounted) return;
       setState(() {
         _error = 'Invalid credentials';
       });
@@ -36,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFCF8EE),
+  backgroundColor: Theme.of(context).colorScheme.background,
       body: Center(
         child: SingleChildScrollView(
           child: Column(
@@ -46,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
               // Logo circle
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE3B13B),
+                  color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(24),
@@ -60,17 +65,17 @@ class _LoginScreenState extends State<LoginScreen> {
               // Title
               Text(
                 'Crown Security',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 32,
-                  color: Color(0xFFE3B13B),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 8),
               // Subtitle
               Text(
                 'Client Portal',
-                style: TextStyle(fontSize: 20, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 20, color: Colors.grey[700]),
               ),
               const SizedBox(height: 32),
               // Card for login form
@@ -121,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.black.withAlpha((0.6 * 255).round()),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
+                          fillColor: Colors.grey[100],
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide.none,
@@ -143,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.black.withAlpha((0.6 * 255).round()),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
+                          fillColor: Colors.grey[100],
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide.none,
@@ -162,10 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         child: const Text(
                           'Forgot Password?',
-                          style: TextStyle(
-                            color: Color(0xFFE3B13B),
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(color: Color(0xFFCFAE02), fontWeight: FontWeight.w600),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -180,8 +182,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE3B13B),
-                            foregroundColor: Colors.white,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -225,10 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                               child: const Text(
                                 'Sign up',
-                                style: TextStyle(
-                                  color: Color(0xFFE3B13B),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(color: Color(0xFFCFAE02), fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],

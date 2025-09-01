@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../core/api.dart';
 
 class SiteProfileScreen extends StatefulWidget {
@@ -124,14 +125,14 @@ class _SiteProfileScreenState extends State<SiteProfileScreen> {
             Text(_site!['location'] ?? 'Location not available',
                 style: Theme.of(context).textTheme.titleMedium),
             const Divider(height: 24),
-            _buildDetailRow(
-                Icons.calendar_today,
-                'Agreement Start',
-                _site!['agreement_start']?.toString() ?? 'N/A'),
-            _buildDetailRow(
-                Icons.calendar_today,
-                'Agreement End',
-                _site!['agreement_end']?.toString() ?? 'N/A'),
+      _buildDetailRow(
+        Icons.calendar_today,
+        'Agreement Start',
+        _fmtDate(_site!['agreement_start'])),
+      _buildDetailRow(
+        Icons.calendar_today,
+        'Agreement End',
+        _fmtDate(_site!['agreement_end'])),
             _buildDetailRow(Icons.security, 'Strength',
                 _site!['strength']?.toString() ?? 'N/A'),
             _buildDetailRow(Icons.money, 'Rate per Guard',
@@ -150,7 +151,7 @@ class _SiteProfileScreenState extends State<SiteProfileScreen> {
         leading: Icon(Icons.person,
             size: 40, color: Theme.of(context).primaryColor),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('${name ?? 'N/A'}\n${phone ?? 'N/A'}'),
+  subtitle: Text('${name ?? 'N/A'}\n${_fmtPhone(phone)}'),
         isThreeLine: true,
       ),
     );
@@ -171,5 +172,23 @@ class _SiteProfileScreenState extends State<SiteProfileScreen> {
         ],
       ),
     );
+  }
+
+  String _fmtDate(dynamic v) {
+    if (v == null) return 'N/A';
+    DateTime? d;
+    if (v is String) d = DateTime.tryParse(v);
+    if (v is DateTime) d = v;
+    if (d == null) return 'N/A';
+    return DateFormat('dd-MM-yyyy').format(d);
+  }
+
+  String _fmtPhone(String? p) {
+    if (p == null || p.isEmpty) return 'N/A';
+    final digits = p.replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 10) {
+      return digits.substring(digits.length - 10);
+    }
+    return digits;
   }
 }

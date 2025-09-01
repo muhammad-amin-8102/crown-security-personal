@@ -207,7 +207,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       TextField(
                         controller: _phoneController,
                         decoration: InputDecoration(
-                          hintText: '+1 (555) 123-4567',
+                          hintText: '9876543210',
                           hintStyle: TextStyle(
                             color: Colors.black.withAlpha((0.6 * 255).round()),
                           ),

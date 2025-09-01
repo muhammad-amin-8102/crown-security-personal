@@ -72,18 +72,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         itemBuilder: (context, index) {
           final att = _attendance![index];
           final date = DateTime.tryParse(att['date'] ?? '') ?? DateTime.now();
+          final guardName = att['guard_name'] ?? att['guardName'] ?? att['guard'] ?? att['guard_id'];
           return Card(
             elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
               leading: Icon(
-                att['status'] == 'PRESENT' ? Icons.check_circle : Icons.cancel,
-                color: att['status'] == 'PRESENT' ? Colors.green : Colors.red,
+                (att['status']?.toString().toUpperCase() == 'PRESENT') ? Icons.check_circle : Icons.cancel,
+                color: (att['status']?.toString().toUpperCase() == 'PRESENT') ? Colors.green : Colors.red,
               ),
-              title: Text('Guard: ${att['guard_id']}'),
+              title: Text('Guard: ${guardName.toString()}'),
               subtitle: Text('Status: ${att['status']}'),
-              trailing: Text(DateFormat.yMMMd().format(date)),
+              trailing: Text(DateFormat('dd-MM-yyyy').format(date)),
             ),
           );
         },

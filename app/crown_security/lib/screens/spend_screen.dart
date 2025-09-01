@@ -104,7 +104,6 @@ class _SpendScreenState extends State<SpendScreen> {
               itemCount: _spend!.length,
               itemBuilder: (context, i) {
                 final item = _spend![i];
-                final date = DateTime.tryParse(item['date'] ?? '') ?? DateTime.now();
                 return Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(
@@ -116,7 +115,10 @@ class _SpendScreenState extends State<SpendScreen> {
                       NumberFormat.currency(locale: 'en_IN', symbol: '₹')
                           .format(double.tryParse(item['amount'].toString()) ?? 0),
                     ),
-                    trailing: Text(DateFormat.yMMMd().format(date)),
+                    trailing: Text((() {
+                      final date = DateTime.tryParse(item['date'] ?? '') ?? DateTime.now();
+                      return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+                    })()),
                   ),
                 );
               },

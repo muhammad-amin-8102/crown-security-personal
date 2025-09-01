@@ -66,7 +66,7 @@ class _TrainingReportScreenState extends State<TrainingReportScreen> {
       return const Center(child: Text('No report available.'));
     }
 
-    return RefreshIndicator(
+  return RefreshIndicator(
       onRefresh: _loadTrainingReport,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -78,21 +78,46 @@ class _TrainingReportScreenState extends State<TrainingReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetailRow(Icons.calendar_today, 'Date', _report!['date']),
+                _buildDetailRow(
+                  Icons.calendar_today,
+                  'Date',
+                  (() {
+                    final v = _report!['date'] ?? _report!['createdAt'];
+                    if (v == null) return 'N/A';
+                    DateTime? d;
+                    if (v is String) d = DateTime.tryParse(v);
+                    if (v is DateTime) d = v;
+                    if (d == null) return v.toString();
+                    return '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+                  })(),
+                ),
                 const Divider(height: 24),
-                _buildDetailRow(Icons.person, 'Trainer', _report!['trainer']),
+                _buildDetailRow(
+                  Icons.person,
+                  'Trainer',
+                  (() {
+                    final v = _report!['trainer'] ?? _report!['trainer_name'];
+                    return (v == null) ? 'N/A' : v.toString();
+                  })(),
+                ),
                 const Divider(height: 24),
-                _buildDetailRow(Icons.group, 'Attendance', _report!['attendance'].toString()),
+                _buildDetailRow(
+                  Icons.group,
+                  'Attendance',
+                  (() {
+                    final v = _report!['attendance'] ?? _report!['attendance_count'];
+                    return (v == null) ? 'N/A' : v.toString();
+                  })(),
+                ),
                 const Divider(height: 24),
                 Text(
                   'Topics Covered:',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _report!['topics_covered'],
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text((
+                  _report!['topics_covered'] ?? _report!['topics'] ?? 'No topics'
+                ).toString(), style: Theme.of(context).textTheme.bodyLarge),
               ],
             ),
           ),
