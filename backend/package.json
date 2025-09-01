@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "src/server.js",
   "scripts": {
+    "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "build": "echo 'Build completed'",
+    "deploy": "npm run db:migrate && npm run db:seed",
     "db:create": "npx sequelize-cli db:create",
     "db:migrate": "npx sequelize-cli db:migrate",
     "db:seed": "npx sequelize-cli db:seed:all",
