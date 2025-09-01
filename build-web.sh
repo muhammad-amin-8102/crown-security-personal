@@ -27,7 +27,8 @@ flutter pub get
 echo "🏗️ Building Flutter web app..."
 flutter build web --release \
     --dart-define=API_BASE_URL=${API_BASE_URL:-http://localhost:3000} \
-    --base-href=/admin/
+    --base-href=/admin/ \
+    --no-wasm-dry-run
     --output build/web
 
 # Copy to backend public directory

@@ -16,7 +16,8 @@ RUN flutter pub get
 # Build Flutter web app
 RUN flutter build web --release \
     --dart-define=API_BASE_URL=/api/v1 \
-    --base-href=/admin/
+    --base-href=/admin/ \
+    --no-wasm-dry-run
 
 # Backend Build Stage
 FROM node:22-alpine AS backend-builder
