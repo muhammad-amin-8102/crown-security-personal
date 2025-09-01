@@ -1,6 +1,12 @@
-# Crown Security API - Render.com Deployment Guide
-
-## Prerequisites
+# Crown Security API - Render.com Deployment Gui**Required Variables:**
+```
+NODE_ENV=production
+DATABASE_URL=postgresql://crownsecurity_user:qQiOjO9MOKdZnoTsOiqpjI6EC5BvrTqk@dpg-d2qokl75r7bs73b1181g-a.oregon-postgres.render.com:5432/crownsecurity
+JWT_ACCESS_SECRET=your_super_secure_jwt_access_secret_here_render
+JWT_REFRESH_SECRET=your_super_secure_jwt_refresh_secret_here_render
+JWT_ACCESS_TTL=2592000
+JWT_REFRESH_TTL=2592000
+```Prerequisites
 1. GitHub account
 2. Render.com account (free tier available)
 3. Your code pushed to a GitHub repository

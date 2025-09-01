@@ -49,7 +49,7 @@ In Render dashboard, go to your web service → Environment tab and add:
 **Required Variables:**
 ```
 NODE_ENV=production
-DATABASE_URL=postgresql://username:password@hostname:port/database
+DATABASE_URL=postgresql://username:password@hostname.oregon-postgres.render.com:5432/database
 JWT_ACCESS_SECRET=your_super_secure_jwt_access_secret_here_render
 JWT_REFRESH_SECRET=your_super_secure_jwt_refresh_secret_here_render
 JWT_ACCESS_TTL=2592000
@@ -69,15 +69,23 @@ APP_VERSION=1.0.0
 ```
 
 **Database URL Format:**
-- Get from your PostgreSQL service dashboard
-- Format: `postgresql://username:password@hostname:port/database`
+- Get from your PostgreSQL service dashboard in Render
+- Format: `postgresql://username:password@hostname.oregon-postgres.render.com:5432/database`
+- **IMPORTANT**: Must include `:5432` port number and full hostname
 
 ### 4. Database Setup
 
-The deployment will automatically:
-- Run database migrations
-- Seed initial data
-- Create necessary tables
+**Manual Migration (Recommended for first deployment):**
+1. Go to your PostgreSQL service in Render dashboard
+2. Click "Connect" → "External Connection"
+3. Run migrations manually:
+   ```bash
+   npx sequelize-cli db:migrate --url "your_database_url_here"
+   ```
+
+**Automatic Setup:**
+- Database connection retries automatically
+- Tables created on first successful connection
 
 ### 5. Domain Configuration
 
@@ -113,24 +121,25 @@ class Api {
 
 ### Common Issues
 
-1. **Database Connection Errors**
-   - Ensure PostgreSQL service is running
-   - Check DATABASE_URL format is correct
-   - Verify database credentials
+1. **Database Connection Errors (ECONNREFUSED)**
+   - **Check DATABASE_URL format**: Must include port `:5432` and full hostname
+   - **Correct format**: `postgresql://user:pass@hostname.oregon-postgres.render.com:5432/dbname`
+   - **Wait for database**: PostgreSQL service takes 1-2 minutes to be ready
+   - **Check database status**: Ensure PostgreSQL service shows "Available" in dashboard
 
 2. **Migration Errors**
+   - Run migrations manually first time using Render shell or external connection
    - Check logs for specific migration issues
-   - Ensure DATABASE_URL is properly set
-   - May need to manually run migrations
+   - Ensure DATABASE_URL is properly set in environment variables
 
 3. **JWT Errors**
    - Ensure JWT_ACCESS_SECRET and JWT_REFRESH_SECRET are set
-   - Use strong, unique secrets for production
+   - Use strong, unique secrets for production (not the example values)
 
 4. **Cold Start Issues**
    - Free tier services sleep after 15 minutes of inactivity
    - First request after sleep may take 30+ seconds
-   - Consider upgrading to paid plan for production
+   - Database connection retries automatically with 5 attempts
 
 ## Environment Variables Reference
 
