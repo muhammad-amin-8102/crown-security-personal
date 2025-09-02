@@ -7,33 +7,63 @@ const { signAccess, signRefresh } = require('../../middleware/auth');
 // Login
 router.post('/login', async (req, res) => {
   try {
+    console.log('🔐 Login attempt received');
+    console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('📤 Request headers:', JSON.stringify(req.headers, null, 2));
+    
     const { email, password } = req.body;
     
     // Validate input
     if (!email || !password) {
+      console.log('❌ Missing fields - email:', !!email, 'password:', !!password);
       return res.status(400).json({ 
         error: 'missing_fields', 
         message: 'Email and password are required' 
       });
     }
     
+    console.log('🔍 Looking for user with email:', email);
+    
     // Find user
     const user = await User.findOne({ where: { email } });
+    console.log('👤 User found:', !!user);
+    if (user) {
+      console.log('📋 User details:', {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        active: user.active,
+        hasPassword: !!user.password_hash,
+        passwordLength: user.password_hash ? user.password_hash.length : 0
+      });
+    }
+    
     if (!user) {
+      console.log('❌ User not found for email:', email);
       return res.status(400).json({ 
         error: 'invalid_credentials', 
         message: 'Invalid email or password' 
       });
     }
     
+    console.log('🔑 Comparing password...');
+    console.log('🔑 Password provided length:', password.length);
+    console.log('🔑 Hash in database length:', user.password_hash ? user.password_hash.length : 0);
+    
     // Check password
     const ok = await bcrypt.compare(password, user.password_hash || '');
+    console.log('✅ Password comparison result:', ok);
+    
     if (!ok) {
+      console.log('❌ Password mismatch for user:', email);
       return res.status(400).json({ 
         error: 'invalid_credentials', 
         message: 'Invalid email or password' 
       });
     }
+    
+    console.log('🎉 Login successful for user:', email);
     
     // Create payload and tokens
     const payload = { 
@@ -43,13 +73,19 @@ router.post('/login', async (req, res) => {
       email: user.email 
     };
     
-    return res.json({ 
+    console.log('🎫 Generated payload:', JSON.stringify(payload, null, 2));
+    
+    const response = { 
       access_token: signAccess(payload), 
       refresh_token: signRefresh(payload), 
       user: payload 
-    });
+    };
+    
+    console.log('📤 Sending successful login response');
+    return res.json(response);
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('💥 Login error:', error);
+    console.error('💥 Error stack:', error.stack);
     return res.status(500).json({ 
       error: 'server_error', 
       message: 'Internal server error during login',
