@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import '../../core/api.dart';
 
 class AdminDataTable extends StatefulWidget {
@@ -8,10 +12,16 @@ class AdminDataTable extends StatefulWidget {
   final Map<String, dynamic> Function(Map<String, dynamic>) mapRowData;
   final Widget Function(Map<String, dynamic>)? buildCreateForm;
   final Widget Function(Map<String, dynamic>)? buildEditForm;
+  final List<AdminFormField>? createFormFields;
+  final List<AdminFormField>? editFormFields;
   final bool canCreate;
   final bool canEdit;
   final bool canDelete;
+  final bool canBulkImport;
+  final bool canExport;
   final String? searchField;
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic>)? onCreateItem;
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic>)? onUpdateItem;
 
   const AdminDataTable({
     super.key,
@@ -21,10 +31,16 @@ class AdminDataTable extends StatefulWidget {
     required this.mapRowData,
     this.buildCreateForm,
     this.buildEditForm,
+    this.createFormFields,
+    this.editFormFields,
     this.canCreate = true,
     this.canEdit = true,
     this.canDelete = true,
+    this.canBulkImport = true,
+    this.canExport = true,
     this.searchField,
+    this.onCreateItem,
+    this.onUpdateItem,
   });
 
   @override
@@ -189,7 +205,30 @@ class _AdminDataTableState extends State<AdminDataTable> {
                 ),
               ),
               const Spacer(),
-              if (widget.canCreate && widget.buildCreateForm != null)
+              // Bulk operations
+              if (widget.canExport) ...[
+                OutlinedButton.icon(
+                  onPressed: _exportData,
+                  icon: const Icon(Icons.download),
+                  label: const Text('Export'),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (widget.canBulkImport) ...[
+                OutlinedButton.icon(
+                  onPressed: _showImportDialog,
+                  icon: const Icon(Icons.upload),
+                  label: const Text('Import'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _downloadTemplate,
+                  icon: const Icon(Icons.file_download),
+                  label: const Text('Template'),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (widget.canCreate)
                 ElevatedButton.icon(
                   onPressed: () => _showCreateDialog(),
                   icon: const Icon(Icons.add),
@@ -417,14 +456,76 @@ class _AdminDataTableState extends State<AdminDataTable> {
     );
   }
 
-  void _showCreateDialog() {
+  void _exportData() async {
+    try {
+      final csvContent = _generateCSV(_data);
+      final bytes = const Utf8Encoder().convert(csvContent);
+      
+      await FileSaver.instance.saveFile(
+        name: '${widget.title.toLowerCase().replaceAll(' ', '_')}_export_${DateTime.now().millisecondsSinceEpoch}',
+        bytes: Uint8List.fromList(bytes),
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data exported successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
+  }
+
+  void _downloadTemplate() async {
+    try {
+      final templateContent = _generateTemplate();
+      final bytes = const Utf8Encoder().convert(templateContent);
+      
+      await FileSaver.instance.saveFile(
+        name: '${widget.title.toLowerCase().replaceAll(' ', '_')}_template',
+        bytes: Uint8List.fromList(bytes),
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Template downloaded successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Template download failed: $e')),
+        );
+      }
+    }
+  }
+
+  void _showImportDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Add New ${widget.title.replaceAll('s', '')}'),
-        content: SizedBox(
-          width: 500,
-          child: widget.buildCreateForm!({}),
+        title: Text('Import ${widget.title}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Select a CSV file to import. Make sure the columns match the template format.',
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _selectImportFile,
+              icon: const Icon(Icons.file_upload),
+              label: const Text('Select CSV File'),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -433,26 +534,388 @@ class _AdminDataTableState extends State<AdminDataTable> {
           ),
         ],
       ),
-    ).then((_) => _loadData());
+    );
+  }
+
+  void _selectImportFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.bytes != null) {
+          await _processImportFile(file.bytes!);
+        } else {
+          throw Exception('File content is empty');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _processImportFile(Uint8List bytes) async {
+    try {
+      final content = const Utf8Decoder().convert(bytes);
+      final lines = content.split('\n').where((line) => line.trim().isNotEmpty).toList();
+      
+      if (lines.isEmpty) {
+        throw Exception('File is empty');
+      }
+
+      final headers = lines.first.split(',').map((h) => h.trim()).toList();
+      final dataRows = lines.skip(1).toList();
+
+      int successCount = 0;
+      int errorCount = 0;
+      final errors = <String>[];
+
+      for (int i = 0; i < dataRows.length; i++) {
+        try {
+          final values = dataRows[i].split(',').map((v) => v.trim()).toList();
+          final rowData = <String, dynamic>{};
+          
+          for (int j = 0; j < headers.length && j < values.length; j++) {
+            rowData[headers[j]] = values[j];
+          }
+
+          // Process the row data if needed
+          final processedData = widget.onCreateItem != null 
+              ? await widget.onCreateItem!(rowData)
+              : rowData;
+
+          await Api.dio.post(widget.endpoint, data: processedData);
+          successCount++;
+        } catch (e) {
+          errorCount++;
+          errors.add('Row ${i + 2}: $e');
+        }
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // Close import dialog
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Import completed: $successCount successful, $errorCount failed',
+            ),
+            backgroundColor: errorCount > 0 ? Colors.orange : Colors.green,
+          ),
+        );
+
+        if (errors.isNotEmpty && errors.length <= 5) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Import Errors'),
+              content: Text(errors.join('\n')),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        _loadData(); // Refresh the data
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import processing failed: $e')),
+        );
+      }
+    }
+  }
+
+  String _generateCSV(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) return '';
+    
+    final headers = widget.columns.map((col) => col.field).toList();
+    final csvLines = <String>[];
+    
+    // Add headers
+    csvLines.add(headers.join(','));
+    
+    // Add data rows
+    for (final item in data) {
+      final mappedItem = widget.mapRowData(item);
+      final row = headers.map((header) => 
+        '"${mappedItem[header]?.toString().replaceAll('"', '""') ?? ''}"'
+      ).join(',');
+      csvLines.add(row);
+    }
+    
+    return csvLines.join('\n');
+  }
+
+  String _generateTemplate() {
+    final headers = widget.columns.map((col) => col.field).toList();
+    final csvLines = <String>[];
+    
+    // Add headers
+    csvLines.add(headers.join(','));
+    
+    // Add example data based on field names
+    final exampleRow = headers.map((header) {
+      switch (header.toLowerCase()) {
+        case 'name':
+          return 'Example Name';
+        case 'email':
+          return 'example@company.com';
+        case 'phone':
+          return '+1234567890';
+        case 'amount':
+          return '1000.00';
+        case 'code':
+          return 'EX001';
+        case 'status':
+          return 'ACTIVE';
+        case 'due_date':
+        case 'date':
+          return '2025-01-01';
+        case 'address':
+        case 'location':
+          return '123 Example Street';
+        default:
+          return 'Example Value';
+      }
+    }).map((value) => '"$value"').join(',');
+    
+    csvLines.add(exampleRow);
+    
+    return csvLines.join('\n');
+  }
+
+  void _showCreateDialog() {
+    if (widget.buildCreateForm != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Add New ${widget.title.replaceAll('s', '')}'),
+          content: SizedBox(
+            width: 500,
+            child: widget.buildCreateForm!({}),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ).then((_) => _loadData());
+    } else if (widget.createFormFields != null) {
+      _showFormDialog(isEdit: false);
+    }
   }
 
   void _showEditDialog(Map<String, dynamic> item) {
+    if (widget.buildEditForm != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Edit ${widget.title.replaceAll('s', '')}'),
+          content: SizedBox(
+            width: 500,
+            child: widget.buildEditForm!(item),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ).then((_) => _loadData());
+    } else if (widget.editFormFields != null || widget.createFormFields != null) {
+      _showFormDialog(isEdit: true, initialData: item);
+    }
+  }
+
+  void _showFormDialog({bool isEdit = false, Map<String, dynamic>? initialData}) {
+    final formFields = isEdit ? (widget.editFormFields ?? widget.createFormFields!) : widget.createFormFields!;
+    final formKey = GlobalKey<FormState>();
+    final formData = Map<String, dynamic>.from(initialData ?? {});
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit ${widget.title.replaceAll('s', '')}'),
+        title: Text('${isEdit ? 'Edit' : 'Add New'} ${widget.title.replaceAll('s', '')}'),
         content: SizedBox(
           width: 500,
-          child: widget.buildEditForm!(item),
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: formFields.map((field) => _buildFormField(field, formData, formKey)).toList(),
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                try {
+                  final processedData = isEdit
+                      ? (widget.onUpdateItem != null ? await widget.onUpdateItem!(formData) : formData)
+                      : (widget.onCreateItem != null ? await widget.onCreateItem!(formData) : formData);
+
+                  if (isEdit) {
+                    await Api.dio.put('${widget.endpoint}/${initialData!['id']}', data: processedData);
+                  } else {
+                    await Api.dio.post(widget.endpoint, data: processedData);
+                  }
+
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${isEdit ? 'Updated' : 'Created'} successfully')),
+                    );
+                    _loadData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              }
+            },
+            child: Text(isEdit ? 'Update' : 'Create'),
+          ),
         ],
       ),
-    ).then((_) => _loadData());
+    );
+  }
+
+  Widget _buildFormField(AdminFormField field, Map<String, dynamic> formData, GlobalKey<FormState> formKey) {
+    if (field.type == AdminFieldType.custom && field.customWidget != null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: field.customWidget!(formKey, formData, (fieldName, value) {
+          formData[fieldName] = value;
+        }),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _buildStandardFormField(field, formData),
+    );
+  }
+
+  Widget _buildStandardFormField(AdminFormField field, Map<String, dynamic> formData) {
+    switch (field.type) {
+      case AdminFieldType.dropdown:
+        return DropdownButtonFormField<String>(
+          value: formData[field.field]?.toString(),
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+          ),
+          items: field.dropdownOptions?.map((option) => DropdownMenuItem(
+            value: option,
+            child: Text(option),
+          )).toList(),
+          onChanged: field.enabled ? (value) => formData[field.field] = value : null,
+          validator: field.required ? (value) => value?.isEmpty ?? true ? 'This field is required' : null : null,
+        );
+
+      case AdminFieldType.date:
+        return TextFormField(
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+            suffixIcon: const Icon(Icons.calendar_today),
+          ),
+          readOnly: true,
+          controller: TextEditingController(text: formData[field.field]?.toString() ?? ''),
+          onTap: field.enabled ? () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (date != null) {
+              formData[field.field] = date.toIso8601String().substring(0, 10);
+            }
+          } : null,
+          validator: field.required ? (value) => value?.isEmpty ?? true ? 'This field is required' : null : null,
+        );
+
+      case AdminFieldType.number:
+        return TextFormField(
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+            hintText: field.hint,
+          ),
+          keyboardType: TextInputType.number,
+          initialValue: formData[field.field]?.toString(),
+          enabled: field.enabled,
+          onChanged: (value) => formData[field.field] = value,
+          validator: field.required ? (value) => value?.isEmpty ?? true ? 'This field is required' : null : null,
+        );
+
+      case AdminFieldType.email:
+        return TextFormField(
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+            hintText: field.hint,
+          ),
+          keyboardType: TextInputType.emailAddress,
+          initialValue: formData[field.field]?.toString(),
+          enabled: field.enabled,
+          onChanged: (value) => formData[field.field] = value,
+          validator: (value) {
+            if (field.required && (value?.isEmpty ?? true)) {
+              return 'This field is required';
+            }
+            if (value?.isNotEmpty ?? false) {
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value!)) {
+                return 'Enter a valid email';
+              }
+            }
+            return null;
+          },
+        );
+
+      default: // text, password
+        return TextFormField(
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+            hintText: field.hint,
+          ),
+          obscureText: field.type == AdminFieldType.password,
+          initialValue: formData[field.field]?.toString(),
+          enabled: field.enabled,
+          onChanged: (value) => formData[field.field] = value,
+          validator: field.required ? (value) => value?.isEmpty ?? true ? 'This field is required' : null : null,
+        );
+    }
   }
 }
 
@@ -465,5 +928,29 @@ class AdminColumn {
     required this.field,
     required this.title,
     this.flex = 1,
+  });
+}
+
+enum AdminFieldType { text, number, email, password, date, dropdown, checkbox, custom }
+
+class AdminFormField {
+  final String field;
+  final String label;
+  final AdminFieldType type;
+  final bool required;
+  final List<String>? dropdownOptions;
+  final Widget Function(GlobalKey<FormState>, Map<String, dynamic>, Function(String, dynamic))? customWidget;
+  final String? hint;
+  final bool enabled;
+
+  AdminFormField({
+    required this.field,
+    required this.label,
+    required this.type,
+    this.required = false,
+    this.dropdownOptions,
+    this.customWidget,
+    this.hint,
+    this.enabled = true,
   });
 }

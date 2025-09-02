@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/api.dart';
+import '../widgets/site_selector.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -13,6 +14,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   String? _error;
   String? _siteId;
+  String? _siteName;
   String? _from;
   String? _to;
   String _selectedPreset = 'This Month';
@@ -44,24 +46,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
       return;
     }
-    // Fetch sites for this user
-    try {
-      final response = await Api.dio.get(
-        '/sites',
-        queryParameters: {'client_id': userId},
-      );
-      final sites = response.data as List?;
-      if (sites == null || sites.isEmpty) {
-        setState(() {
-          _loading = false;
-          _error = 'No site assigned to your account.';
-        });
-        return;
-      }
-      _siteId = sites.first['id'];
-      // Store siteId for other screens to use
-      await Api.storage.write(key: 'site_id', value: _siteId);
 
+    // Try to restore previously selected site
+    final savedSiteId = await Api.storage.read(key: 'selected_site_id');
+    final savedSiteName = await Api.storage.read(key: 'selected_site_name');
+    
+    if (savedSiteId != null && savedSiteName != null) {
+      _siteId = savedSiteId;
+      _siteName = savedSiteName;
+      
       // Initialize date range (restore previous or default to current month)
       _from = await Api.storage.read(key: 'dash_from');
       _to = await Api.storage.read(key: 'dash_to');
@@ -69,13 +62,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (_from == null || _to == null) {
         _applyPresetInternal('This Month', persist: true);
       }
+      
       await _loadDashboard(_siteId!);
-    } catch (e) {
+    } else {
+      // No saved site, let the SiteSelector handle initial selection
       setState(() {
         _loading = false;
-        _error = 'Failed to load sites.';
       });
     }
+  }
+
+  void _onSiteChanged(String siteId, String siteName) async {
+    print('🏢 Site changed: $siteName ($siteId)');
+    
+    setState(() {
+      _siteId = siteId;
+      _siteName = siteName;
+      _loading = true;
+      _error = null;
+    });
+
+    // Save selected site
+    await Api.storage.write(key: 'selected_site_id', value: siteId);
+    await Api.storage.write(key: 'selected_site_name', value: siteName);
+    await Api.storage.write(key: 'site_id', value: siteId); // Legacy compatibility
+
+    // Initialize date range if not set
+    if (_from == null || _to == null) {
+      _applyPresetInternal('This Month', persist: true);
+    }
+
+    await _loadDashboard(siteId);
   }
 
   Future<void> _loadDashboard(String siteId) async {
@@ -97,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: Text(_siteName != null ? 'Dashboard - $_siteName' : 'Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -116,10 +133,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : _data == null
-                  ? const Center(child: Text('No data'))
-                  : RefreshIndicator(
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(_error!),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadUserSiteAndDashboard,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : _siteId == null
+                  ? Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          SiteSelector(
+                            selectedSiteId: _siteId,
+                            onSiteChanged: _onSiteChanged,
+                            enabled: !_loading,
+                          ),
+                          const SizedBox(height: 32),
+                          const Center(
+                            child: Text(
+                              'Please select a site to view dashboard',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _data == null
+                      ? const Center(child: Text('No data'))
+                      : RefreshIndicator(
                       onRefresh: () async {
                         if (_siteId != null) {
                           await _loadDashboard(_siteId!);
@@ -128,6 +177,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: ListView(
                         padding: const EdgeInsets.all(16.0),
                         children: [
+                          // Site Selector - Only show if site is selected or loading
+                          if (_siteId != null || _loading) ...[
+                            SiteSelector(
+                              selectedSiteId: _siteId,
+                              onSiteChanged: _onSiteChanged,
+                              enabled: !_loading,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          
                           // Date Range Selector
                           Card(
                             elevation: 2,
@@ -489,19 +548,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -531,8 +580,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
               if (shiftData.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'DAY',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
                 ...shiftData.map((shift) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
@@ -555,7 +613,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 )).toList(),
-              ] else
+              ] else ...[
+                const SizedBox(height: 8),
                 const Text(
                   'No shift data',
                   style: TextStyle(
@@ -563,6 +622,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: Colors.grey,
                   ),
                 ),
+              ],
             ],
           ),
         ),
