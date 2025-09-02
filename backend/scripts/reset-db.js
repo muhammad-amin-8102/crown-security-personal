@@ -129,25 +129,38 @@ async function runSeedersManually(sequelize) {
     console.log('👥 Seeding users...');
     const passwordHash = await bcrypt.hash('Pass@123', 10);
     
-    await sequelize.query(`
+    const userResults = await sequelize.query(`
       INSERT INTO "Users" (id, name, email, phone, role, password_hash, active, "createdAt", "updatedAt")
       VALUES 
         (uuid_generate_v4(), 'Admin User', 'admin@crown.local', '+1234567890', 'ADMIN', :hash, true, NOW(), NOW()),
         (uuid_generate_v4(), 'Client User', 'client@crown.local', '+9999999999', 'CLIENT', :hash, true, NOW(), NOW())
+      RETURNING id, email
     `, {
       replacements: { hash: passwordHash },
-      raw: true
+      type: sequelize.QueryTypes.INSERT
     });
 
-    // Seed Sites
+    console.log('✅ Users seeded');
+
+    // Get client user ID for site assignment
+    const [clientUser] = await sequelize.query(`
+      SELECT id FROM "Users" WHERE email = 'client@crown.local' LIMIT 1
+    `, {
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    // Seed Sites with client assignment
     console.log('🏢 Seeding sites...');
     await sequelize.query(`
-      INSERT INTO "Sites" (id, name, address, contact_person, contact_phone, "createdAt", "updatedAt")
+      INSERT INTO "Sites" (id, name, address, contact_person, contact_phone, client_id, "createdAt", "updatedAt")
       VALUES 
-        (uuid_generate_v4(), 'Downtown Office Complex', '123 Business District, City Center', 'John Manager', '+1234567890', NOW(), NOW()),
-        (uuid_generate_v4(), 'Residential Tower A', '456 Residential Area, Suburb', 'Jane Supervisor', '+9876543210', NOW(), NOW()),
-        (uuid_generate_v4(), 'Shopping Mall Security', '789 Commercial Street, Mall District', 'Mike Chief', '+5555555555', NOW(), NOW())
-    `, { raw: true });
+        (uuid_generate_v4(), 'Downtown Office Complex', '123 Business District, City Center', 'John Manager', '+1234567890', :clientId, NOW(), NOW()),
+        (uuid_generate_v4(), 'Residential Tower A', '456 Residential Area, Suburb', 'Jane Supervisor', '+9876543210', :clientId, NOW(), NOW()),
+        (uuid_generate_v4(), 'Shopping Mall Security', '789 Commercial Street, Mall District', 'Mike Chief', '+5555555555', :clientId, NOW(), NOW())
+    `, { 
+      replacements: { clientId: clientUser.id },
+      raw: true 
+    });
 
     console.log('✅ Manual seeding completed');
     
