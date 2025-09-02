@@ -23,19 +23,19 @@ services:
       - key: APP_VERSION
         value: 1.0.0
       - key: FRONTEND_URL
-        value: https://crown-security-fullstack.onrender.com
+        value: https://crown-security-personal.onrender.com
       - key: DATABASE_URL
         fromDatabase:
           name: crown-security-db
           property: connectionString
       - key: ADMIN_EMAIL
-        value: admin@crownsecurity.com
+        value: admin@crown.local
       - key: ADMIN_NAME
         value: Crown Security Admin
       - key: ADMIN_PHONE
         value: +1-555-0123
       - key: ADMIN_PASSWORD
-        value: Admin@2025!
+        value: Pass@123
     healthCheckPath: /health
     
   - type: pserv

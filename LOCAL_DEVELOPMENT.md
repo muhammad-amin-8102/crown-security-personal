@@ -49,8 +49,8 @@ docker-compose logs -f
 - **API Debug Info**: http://localhost:3000/debug
 
 ### 3. Default Login Credentials
-- **Email**: `admin@crownsecurity.com`
-- **Password**: `Admin@2025!`
+- **Email**: `admin@crown.local`
+- **Password**: `Pass@123`
 
 ### 4. Stop the Application
 ```cmd

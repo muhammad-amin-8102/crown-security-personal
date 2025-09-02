@@ -20,10 +20,10 @@ class Api {
         return '${Uri.base.origin}/api/v1';
       }
     } else {
-      // Mobile builds
+      // Mobile builds - point to production server
       return const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://localhost:3000/api/v1',
+        defaultValue: 'https://crown-security-personal.onrender.com/api/v1',
       );
     }
   }
@@ -59,10 +59,18 @@ class Api {
 
   static Future<bool> login(String email, String password) async {
     try {
+      print('🔐 Login attempt for: $email');
+      print('🌐 API Base URL: $baseUrl');
+      print('📤 Request data: ${jsonEncode({'email': email, 'password': password})}');
+      
       final response = await dio.post(
         '/auth/login',
         data: {'email': email, 'password': password},
       );
+      
+      print('✅ Login response status: ${response.statusCode}');
+      print('📥 Login response data: ${jsonEncode(response.data)}');
+      
       await _storage.write(
         key: 'access_token',
         value: response.data['access_token'],
@@ -86,11 +94,19 @@ class Api {
           }
           if (role != null) {
             await _storage.write(key: 'role', value: role);
+            print('👤 User role saved: $role');
           }
         } catch (_) {}
       }
       return true;
     } catch (e) {
+      print('❌ Login error: $e');
+      if (e is DioException) {
+        print('🔍 Error type: ${e.type}');
+        print('📊 Status code: ${e.response?.statusCode}');
+        print('📄 Error response: ${e.response?.data}');
+        print('🌐 Request URL: ${e.requestOptions.uri}');
+      }
       return false;
     }
   }

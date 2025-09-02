@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -18,8 +20,26 @@ import 'screens/rating_nps_screen.dart';
 import 'screens/bills_soa_screen.dart';
 import 'admin/admin_layout.dart';
 import 'core/api.dart';
+import 'core/android_optimizations.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  
+  // Request Android optimizations for better performance on OPPO devices
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await AndroidOptimizations.requestBatteryOptimizationDisable();
+    } catch (e) {
+      print('Android optimizations failed: $e');
+    }
+  }
+  
   runApp(const CrownSecurityApp());
 }
 
@@ -119,7 +139,39 @@ class _LaunchGateState extends State<LaunchGate> {
     }
     final role = await Api.storage.read(key: 'role');
     final isAdmin = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
+    
+    // Mobile app is client-only. Admins must use web version.
+    if (!kIsWeb && isAdmin) {
+      await _showAdminRedirectDialog();
+      return;
+    }
+    
     setState(() { _child = isAdmin ? const AdminLayout() : const MainNav(); });
+  }
+
+  Future<void> _showAdminRedirectDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Admin Access'),
+        content: const Text(
+          'Admin access is not available on mobile.\n\n'
+          'Please use the web version at:\n'
+          'https://your-domain.com/admin'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Api.storage.deleteAll();
+              Navigator.of(context).pop();
+              setState(() { _child = const LoginScreen(); });
+            },
+            child: const Text('Logout & Return to Login'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -149,11 +201,39 @@ class _MainNavState extends State<MainNav> {
     setState(() {
       _isAdmin = role == 'ADMIN' || role == 'OFFICER' || role == 'FINANCE' || role == 'CRO';
     });
-    // If admin-type role, immediately send to admin dashboard and keep client shell hidden
-    if (mounted && _isAdmin) {
-      // replace so there's no back to client shell
+    // Mobile app only allows clients - admins should use web
+    if (mounted && _isAdmin && !kIsWeb) {
+      await _showAdminRedirectDialog();
+      return;
+    }
+    // If admin-type role on web, send to admin dashboard
+    if (mounted && _isAdmin && kIsWeb) {
       Navigator.of(context).pushReplacementNamed('/admin');
     }
+  }
+
+  Future<void> _showAdminRedirectDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Admin Access'),
+        content: const Text(
+          'Admin access is not available on mobile.\n\n'
+          'Please use the web version.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Api.storage.deleteAll();
+              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacementNamed('/');
+            },
+            child: const Text('Logout & Return to Login'),
+          ),
+        ],
+      ),
+    );
   }
   static final List<Widget> _screens = [
     DashboardScreen(),

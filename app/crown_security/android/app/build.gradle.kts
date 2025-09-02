@@ -6,28 +6,30 @@ plugins {
 }
 
 android {
-    namespace = "com.example.crown_security"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.crowntech.security"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.crown_security"
+        applicationId = "com.crowntech.security"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Android 12+ compatibility
+        vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
