@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { auth } = require('../../middleware/auth');
 const { allow } = require('../../middleware/roles');
 const { User } = require('../../../models');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // List all users
 router.get('/', auth(), allow('ADMIN'), async (req, res) => {

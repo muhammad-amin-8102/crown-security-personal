@@ -51,28 +51,27 @@ async function connectWithRetry(retries = 5, delay = 5000) {
     // Connect to database with retry logic
     await connectWithRetry();
     
-    // Auto-run migrations in production (Render)
-    if (!isDevelopment) {
-      console.log('🔄 Running database migrations...');
-      try {
-        const { exec } = require('child_process');
-        const { promisify } = require('util');
-        const execAsync = promisify(exec);
-        
-        // Run migrations first
-        console.log('📋 Running Sequelize migrations...');
-        const migrationResult = await execAsync('npx sequelize-cli db:migrate', { 
-          cwd: __dirname + '/..',
-          timeout: 60000 
-        });
-        console.log('✅ Database migrations completed');
-        console.log('📄 Migration output:', migrationResult.stdout);
-        if (migrationResult.stderr) {
-          console.log('⚠️ Migration warnings:', migrationResult.stderr);
-        }
-        
-        // Wait a moment for migrations to fully commit
-        await new Promise(resolve => setTimeout(resolve, 2000));
+    // Auto-run migrations and seeders (both development and production)
+    console.log('🔄 Running database migrations...');
+    try {
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      // Run migrations first
+      console.log('📋 Running Sequelize migrations...');
+      const migrationResult = await execAsync('npx sequelize-cli db:migrate', { 
+        cwd: __dirname + '/..',
+        timeout: 60000 
+      });
+      console.log('✅ Database migrations completed');
+      console.log('📄 Migration output:', migrationResult.stdout);
+      if (migrationResult.stderr) {
+        console.log('⚠️ Migration warnings:', migrationResult.stderr);
+      }
+      
+      // Wait a moment for migrations to fully commit
+      await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Run seeders after migrations
         console.log('🌱 Running database seeders...');
@@ -94,7 +93,7 @@ async function connectWithRetry(retries = 5, delay = 5000) {
           // Attempt programmatic fallback for admin user
           console.log('🔄 Attempting programmatic admin user creation...');
           try {
-            const bcrypt = require('bcrypt');
+            const bcrypt = require('bcryptjs');
             const { User } = require('../models');
             
             const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@2025!', 10);
@@ -125,7 +124,6 @@ async function connectWithRetry(retries = 5, delay = 5000) {
           console.log('❌ Both migration and sync failed:', syncError.message);
         }
       }
-    }
     
     // Start server
     app.listen(port, '0.0.0.0', () => {

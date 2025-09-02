@@ -17,9 +17,3 @@ router.use('/bills', require('./modules/billing')); // Alias for bills
 router.use('/shifts', require('./modules/shifts'));
 
 module.exports = router;
-
-// Catch-all for SPA routes (Flutter web)
-const path = require('path');
-router.get('*', (req, res) => {
-	res.sendFile(path.resolve(__dirname, '../../../app/crown_security/web/index.html'));
-});

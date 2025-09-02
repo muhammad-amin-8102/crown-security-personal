@@ -34,8 +34,8 @@ RUN apk add --no-cache \
 # Copy package files
 COPY backend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies (bcryptjs doesn't need native compilation)
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy backend application code
 COPY backend/ ./

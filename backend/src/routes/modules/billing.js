@@ -5,6 +5,26 @@ const { allow } = require('../../middleware/roles');
 const { Bill } = require('../../../models');
 const { Op } = require('sequelize');
 
+// Get all bills (basic route)
+router.get('/', auth(), allow('CLIENT','ADMIN','FINANCE','CRO'), async (req, res) => {
+	try {
+		const { siteId, from, to, status } = req.query;
+		const where = {};
+		if (siteId) where.site_id = siteId;
+		if (status) where.status = status;
+		if (from || to) where.due_date = { [Op.between]: [from || '1970-01-01', to || '2999-12-31'] };
+		
+		const bills = await Bill.findAll({ 
+			where, 
+			order: [['due_date', 'ASC']] 
+		});
+		
+		res.json(bills);
+	} catch (error) {
+		res.status(500).json({ error: 'failed_to_fetch_bills', message: error.message });
+	}
+});
+
 router.get('/soa', auth(), allow('CLIENT','ADMIN','FINANCE','CRO'), async (req,res)=>{
 	const { siteId, from, to } = req.query;
 	const where = {};
