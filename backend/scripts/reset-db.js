@@ -37,49 +37,45 @@ async function resetDatabase() {
 
     console.log('🧹 Clearing all tables...');
     
-    // Disable foreign key constraints temporarily
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { raw: true }).catch(() => {
-      // For PostgreSQL
-      return sequelize.query('SET session_replication_role = replica;', { raw: true });
-    });
-
-    // Clear tables in reverse order to handle foreign keys
-    for (const tableName of tableOrder.reverse()) {
-      try {
-        await sequelize.query(`DELETE FROM "${tableName}"`, { raw: true });
-        console.log(`✅ Cleared table: ${tableName}`);
-      } catch (error) {
-        // Table might not exist, continue
-        console.log(`⚠️ Could not clear table ${tableName}: ${error.message}`);
-      }
-    }
-
-    // Reset sequences for PostgreSQL
+    // For PostgreSQL, use TRUNCATE CASCADE which is more reliable
     if (dbConfig.dialect === 'postgres') {
-      const sequences = [
-        'Users_id_seq',
-        'Sites_id_seq', 
-        'Shifts_id_seq',
-        'Attendances_id_seq',
-        'Bills_id_seq'
-      ];
-      
-      for (const seq of sequences) {
+      // Disable foreign key constraints temporarily
+      await sequelize.query('SET session_replication_role = replica;', { raw: true });
+
+      // Use TRUNCATE CASCADE for clean deletion
+      for (const tableName of tableOrder.reverse()) {
         try {
-          await sequelize.query(`ALTER SEQUENCE "${seq}" RESTART WITH 1`, { raw: true });
-          console.log(`✅ Reset sequence: ${seq}`);
+          await sequelize.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE`, { raw: true });
+          console.log(`✅ Truncated table: ${tableName}`);
         } catch (error) {
-          // Sequence might not exist, continue
-          console.log(`⚠️ Could not reset sequence ${seq}: ${error.message}`);
+          console.log(`⚠️ Could not truncate table ${tableName}: ${error.message}`);
+          // Fallback to DELETE
+          try {
+            await sequelize.query(`DELETE FROM "${tableName}"`, { raw: true });
+            console.log(`✅ Deleted from table: ${tableName}`);
+          } catch (deleteError) {
+            console.log(`❌ Could not clear table ${tableName}: ${deleteError.message}`);
+          }
         }
       }
-    }
 
-    // Re-enable foreign key constraints
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true }).catch(() => {
-      // For PostgreSQL
-      return sequelize.query('SET session_replication_role = DEFAULT;', { raw: true });
-    });
+      // Re-enable foreign key constraints
+      await sequelize.query('SET session_replication_role = DEFAULT;', { raw: true });
+    } else {
+      // For other databases (MySQL, etc.)
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { raw: true });
+
+      for (const tableName of tableOrder.reverse()) {
+        try {
+          await sequelize.query(`DELETE FROM "${tableName}"`, { raw: true });
+          console.log(`✅ Cleared table: ${tableName}`);
+        } catch (error) {
+          console.log(`⚠️ Could not clear table ${tableName}: ${error.message}`);
+        }
+      }
+
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true });
+    }
 
     console.log('🌱 Running fresh seeders...');
     
