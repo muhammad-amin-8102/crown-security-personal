@@ -17,7 +17,7 @@ class BillsAdmin extends StatelessWidget {
         AdminColumn(field: 'status', title: 'Status'),
         AdminColumn(field: 'site_name', title: 'Site'),
       ],
-      mapRowData: (item) => {
+      mapRowData: (item) {
         final site = item['Site'];
         return {
           'id': item['id'],
@@ -64,7 +64,7 @@ class BillsAdmin extends StatelessWidget {
             onChanged: (value) => onChanged('site_id', value),
             displayField: 'name',
             valueField: 'id',
-            placeholder: 'Select Site',
+            label: 'Site',
           ),
           required: true,
         ),
