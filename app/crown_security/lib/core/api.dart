@@ -58,47 +58,79 @@ class Api {
     );
 
   static Future<bool> login(String email, String password) async {
+    // Try to wake up the server first (Render free tier)
+    try {
+      print('⏰ Waking up server...');
+      await dio.get('/health', options: Options(
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ));
+      print('✅ Server is awake');
+    } catch (e) {
+      print('⚠️ Server wake-up call failed (this is normal): $e');
+      // Continue anyway, the login request might wake it up
+    }
+    
     try {
       print('🔐 Login attempt for: $email');
       print('🌐 API Base URL: $baseUrl');
+      print('📤 Request URL: $baseUrl/auth/login');
       print('📤 Request data: ${jsonEncode({'email': email, 'password': password})}');
+      print('📤 Request headers: Content-Type: application/json');
       
       final response = await dio.post(
         '/auth/login',
         data: {'email': email, 'password': password},
+        options: Options(
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
       );
       
       print('✅ Login response status: ${response.statusCode}');
+      print('📥 Login response headers: ${jsonEncode(response.headers.map)}');
       print('📥 Login response data: ${jsonEncode(response.data)}');
       
-      await _storage.write(
-        key: 'access_token',
-        value: response.data['access_token'],
-      );
-      await _storage.write(
-        key: 'refresh_token',
-        value: response.data['refresh_token'],
-      );
-      // Save user id for dashboard site lookup
-      final user = response.data['user'];
-      if (user != null && user['id'] != null) {
-        await _storage.write(key: 'user_id', value: user['id']);
-        // Store full user JSON
-        try { await _storage.write(key: 'user_profile', value: jsonEncode(user)); } catch (_) {}
-        // Persist role for client-side gating (supports role or roles[])
-        try {
-          final dynamic rolesField = user['roles'];
-          String? role = user['role']?.toString();
-          if (role == null && rolesField is List && rolesField.isNotEmpty) {
-            role = rolesField.first.toString();
-          }
-          if (role != null) {
-            await _storage.write(key: 'role', value: role);
-            print('👤 User role saved: $role');
-          }
-        } catch (_) {}
+      if (response.data['access_token'] != null) {
+        await _storage.write(
+          key: 'access_token',
+          value: response.data['access_token'],
+        );
+        await _storage.write(
+          key: 'refresh_token',
+          value: response.data['refresh_token'],
+        );
+        await _storage.write(
+          key: 'user_data',
+          value: jsonEncode(response.data['user']),
+        );
+        
+        print('🎉 Login successful - tokens stored');
+        
+        // Save user id for dashboard site lookup
+        final user = response.data['user'];
+        if (user != null && user['id'] != null) {
+          await _storage.write(key: 'user_id', value: user['id']);
+          // Store full user JSON
+          try { await _storage.write(key: 'user_profile', value: jsonEncode(user)); } catch (_) {}
+          // Persist role for client-side gating (supports role or roles[])
+          try {
+            final dynamic rolesField = user['roles'];
+            String? role = user['role']?.toString();
+            if (role == null && rolesField is List && rolesField.isNotEmpty) {
+              role = rolesField.first.toString();
+            }
+            if (role != null) {
+              await _storage.write(key: 'role', value: role);
+              print('👤 User role saved: $role');
+            }
+          } catch (_) {}
+        }
+        return true;
+      } else {
+        print('❌ Login failed - no access token in response');
+        return false;
       }
-      return true;
     } catch (e) {
       print('❌ Login error: $e');
       if (e is DioException) {
@@ -106,6 +138,21 @@ class Api {
         print('📊 Status code: ${e.response?.statusCode}');
         print('📄 Error response: ${e.response?.data}');
         print('🌐 Request URL: ${e.requestOptions.uri}');
+        print('📤 Request data: ${e.requestOptions.data}');
+        print('📤 Request headers: ${e.requestOptions.headers}');
+        
+        if (e.response != null) {
+          print('📥 Response headers: ${e.response?.headers.map}');
+          print('📥 Response extra: ${e.response?.extra}');
+        }
+        
+        // Check if it's a network/timeout issue (Render wake-up)
+        if (e.type == DioExceptionType.connectionTimeout || 
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          print('🌐 Network issue detected - server might be sleeping');
+          print('⏰ This could be Render free tier wake-up delay');
+        }
       }
       return false;
     }
